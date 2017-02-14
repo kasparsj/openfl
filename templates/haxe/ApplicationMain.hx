@@ -64,7 +64,7 @@ import DefaultAssetLibrary;
 			
 		};
 		
-		#if hxtelemetry
+		#if (hxtelemetry && !macro)
 		var telemetry = new hxtelemetry.HxTelemetry.Config ();
 		telemetry.allocations = ::if (config.hxtelemetry != null)::("::config.hxtelemetry.allocations::" == "true")::else::true::end::;
 		telemetry.host = ::if (config.hxtelemetry != null)::"::config.hxtelemetry.host::"::else::"localhost"::end::;
@@ -77,6 +77,9 @@ import DefaultAssetLibrary;
 		embed (null, ::WIN_WIDTH::, ::WIN_HEIGHT::, "::WIN_FLASHBACKGROUND::");
 		#end
 		#else
+		#if flash
+		config.assetsPrefix = flash.Lib.current.loaderInfo.parameters.assetsPrefix;
+		#end
 		create ();
 		#end
 		
