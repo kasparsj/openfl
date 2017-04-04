@@ -113,6 +113,7 @@ class DisplayObject extends EventDispatcher implements IBitmapDrawable #if openf
 	private var __visible:Bool;
 	private var __worldAlpha:Float;
 	private var __worldAlphaChanged:Bool;
+	private var __worldBlendMode:BlendMode;
 	private var __worldClip:Rectangle;
 	private var __worldClipChanged:Bool;
 	private var __worldColorTransform:ColorTransform;
@@ -145,6 +146,7 @@ class DisplayObject extends EventDispatcher implements IBitmapDrawable #if openf
 		__scaleY = 1;
 		
 		__worldAlpha = 1;
+		__worldBlendMode = NORMAL;
 		__worldTransform = new Matrix ();
 		__worldColorTransform = new ColorTransform ();
 		__renderTransform = new Matrix ();
@@ -351,7 +353,42 @@ class DisplayObject extends EventDispatcher implements IBitmapDrawable #if openf
 	}
 	
 	
-	private function __dispatchChildren (event:Event):Bool {
+	private function __dispatchChildren (event:Event, stack:Vector<DisplayObject>):Bool {
+		
+		event.target = this;
+		
+		if (parent != null) {
+			
+			event.eventPhase = CAPTURING_PHASE;
+			
+			if (parent == stage) {
+				
+				parent.__dispatchEvent (event);
+				
+			} else {
+				
+				var parent = parent;
+				var i = 0;
+				
+				while (parent != null) {
+					
+					stack[i] = parent;
+					parent = parent.parent;
+					i++;
+					
+				}
+				
+				for (j in 0...i) {
+					
+					stack[i - j - 1].__dispatchEvent (event);
+					
+				}
+				
+			}
+			
+		}
+		
+		event.eventPhase = AT_TARGET;
 		
 		return __dispatchEvent (event);
 		
@@ -383,6 +420,70 @@ class DisplayObject extends EventDispatcher implements IBitmapDrawable #if openf
 		}
 		
 		return result;
+		
+	}
+	
+	
+	private function __dispatchStack (event:Event, stack:Array<DisplayObject>):Void {
+		
+		var target:DisplayObject;
+		var length = stack.length;
+		
+		if (length == 0) {
+			
+			event.eventPhase = EventPhase.AT_TARGET;
+			target = cast event.target;
+			target.__dispatch (event);
+			
+		} else {
+			
+			event.eventPhase = EventPhase.CAPTURING_PHASE;
+			event.target = stack[stack.length - 1];
+			
+			for (i in 0...length - 1) {
+				
+				stack[i].__dispatch (event);
+				
+				if (event.__isCanceled) {
+					
+					return;
+					
+				}
+				
+			}
+			
+			event.eventPhase = EventPhase.AT_TARGET;
+			target = cast event.target;
+			target.__dispatch (event);
+			
+			if (event.__isCanceled) {
+				
+				return;
+				
+			}
+			
+			if (event.bubbles) {
+				
+				event.eventPhase = EventPhase.BUBBLING_PHASE;
+				var i = length - 2;
+				
+				while (i >= 0) {
+					
+					stack[i].__dispatch (event);
+					
+					if (event.__isCanceled) {
+						
+						return;
+						
+					}
+					
+					i--;
+					
+				}
+				
+			}
+			
+		}
 		
 	}
 	
@@ -419,9 +520,16 @@ class DisplayObject extends EventDispatcher implements IBitmapDrawable #if openf
 	}
 	
 	
-	private inline function __getLocalBounds (rect:Rectangle):Void {
+	private function __getLocalBounds (rect:Rectangle):Void {
+		
+		var cacheX = __transform.tx;
+		var cacheY = __transform.ty;
+		__transform.tx = __transform.ty = 0;
 		
 		__getBounds (rect, __transform);
+		
+		__transform.tx = cacheX;
+		__transform.ty = cacheY;
 		
 	}
 	
@@ -702,9 +810,14 @@ class DisplayObject extends EventDispatcher implements IBitmapDrawable #if openf
 				__worldAlpha = alpha * __parent.__worldAlpha;
 				__worldColorTransform.__combine (__parent.__worldColorTransform);
 				
-				if ((blendMode == null || blendMode == NORMAL)) {
+				if (__blendMode == null || __blendMode == NORMAL) {
 					
-					__blendMode = __parent.__blendMode;
+					// TODO: Handle multiple blend modes better
+					__worldBlendMode = __parent.__blendMode;
+					
+				} else {
+					
+					__worldBlendMode = __blendMode;
 					
 				}
 				
