@@ -194,20 +194,21 @@ import haxe.macro.Expr;
 				}
 				
 				if (hasMain) {
-					
+
 					return Context.parse ("@:privateAccess ::APP_MAIN::.main ()", Context.currentPos ());
 					
 				} else if (type.constructor != null) {
 					
 					return macro {
-						
-						var current = stage.getChildAt (0);
+
+						//var current = stage.getChildAt (0);
+						var current:openfl.display.DisplayObjectContainer = openfl.Lib.current;
 						
 						if (current == null || !Std.is (current, openfl.display.DisplayObjectContainer)) {
 							
 							current = new openfl.display.MovieClip ();
 							stage.addChild (current);
-							
+
 						}
 						
 						new DocumentClass (cast current);
