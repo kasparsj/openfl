@@ -684,7 +684,7 @@ class TextEngine {
 		
 		var layoutGroup:TextLayoutGroup = null, advances = null;
 		var widthValue, heightValue = 0.0, maxHeightValue = 0.0;
-		
+
 		var previousSpaceIndex = -2; // -1 equals not found, -2 saves extra comparison in `breakIndex == previousSpaceIndex`
 		var spaceIndex = text.indexOf (" ");
 		var breakIndex = getLineBreakIndex ();
@@ -1220,7 +1220,7 @@ class TextEngine {
 		
 		#if openfl_trace_text_layout_groups
 		for (lg in layoutGroups) {
-			trace("LG", lg.advances.length - (lg.endIndex - lg.startIndex), "line:"+lg.lineIndex, "w:"+lg.width, "h:"+lg.height, "x:"+Std.int(lg.offsetX), "y:"+Std.int(lg.offsetY), '"${text.substring(lg.startIndex, lg.endIndex)}"', lg.startIndex, lg.endIndex);
+			trace("LG", lg.advances.length - (lg.endIndex - lg.startIndex), "line:"+lg.lineIndex, "w:"+lg.width, "x:"+Std.int(lg.offsetX), "y:"+Std.int(lg.offsetY), '"${text.substring(lg.startIndex, lg.endIndex)}"', lg.startIndex, lg.endIndex);
 		}
 		#end
 		
