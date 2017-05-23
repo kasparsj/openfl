@@ -1,3 +1,31 @@
+5.1.1 (05/20/2017)
+------------------
+
+* Fixed regression causing incorrect internal bounds calculation
+* Fixed an issue compiling `openfl display flash` output
+* Fixed regression in path resolution for SWF library handler tools
+
+
+5.1.0 (05/19/2017)
+------------------
+
+* Updated for Lime 5
+* Added openfl.text.StaticText (used in SWF assets)
+* Added openfl.display.AVM1Movie for better compatibility with Flash
+* Added initial support for DisplayObject cacheAsBitmap
+* Added support for DisplayObject colorTransform using cacheAsBitmap
+* Added support for graphicsPath.cubicCurveTo
+* Improved support for graphics.readGraphicsData/drawGraphicsData
+* Improved behavior of Stage3D mipmap filtering
+* Deprecated openfl.gl.\* types (use lime.graphics.opengl.\*)
+* Deprecated openfl.utils.\* typed arrays (use lime.utils.\*)
+* Fixed clipping in graphics.cubicCurveTo
+* Fixed an issue compiling the output of `openfl display`
+* Fixed support for `<window always-on-top="true" />` in template
+* Fixed support for synchronous BitmapData.fromBytes on native
+* Fixed support for Stage3D on HTML5 DOM target
+
+
 5.0.0 (05/04/2017)
 ------------------
 
@@ -7,7 +35,7 @@
 * Removed callbacks in BitmapData.fromFile (use .loadFromFile)
 * Removed unused parameter in sound.loadCompressedDataFromByteArray
 * Removed openfl.embed support in HTML template (use lime.embed)
-* Removed bundled import of asset classes (use openfl.utils.*)
+* Removed bundled import of asset classes (use openfl.utils.\*)
 * Added initial support for compressed Stage3D textures
 * Added initial support for Adobe Texture Format in Stage3D
 * Added support for GraphicsTrianglePath

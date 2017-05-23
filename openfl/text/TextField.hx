@@ -165,6 +165,7 @@ class TextField extends InteractiveObject {
 		
 		__dirty = true;
 		__layoutDirty = true;
+		__setRenderDirty ();
 		
 		__updateText (__text + text);
 		
@@ -547,6 +548,7 @@ class TextField extends InteractiveObject {
 		
 		__dirty = true;
 		__layoutDirty = true;
+		__setRenderDirty ();
 		
 	}
 	
@@ -734,6 +736,7 @@ class TextField extends InteractiveObject {
 		
 		__dirty = true;
 		__layoutDirty = true;
+		__setRenderDirty ();
 		
 	}
 	
@@ -1020,13 +1023,15 @@ class TextField extends InteractiveObject {
 		
 		__updateLayout ();
 		
-		var bounds = Rectangle.__temp;
+		var bounds = Rectangle.__pool.get ();
 		bounds.copyFrom (__textEngine.bounds);
 		bounds.x += __offsetX;
 		bounds.y += __offsetY;
 		bounds.__transform (bounds, matrix);
 		
 		rect.__expand (bounds.x, bounds.y, bounds.width, bounds.height);
+		
+		Rectangle.__pool.release (bounds);
 		
 	}
 	
@@ -1322,6 +1327,7 @@ class TextField extends InteractiveObject {
 		__cursorTimer = Timer.delay (__startCursorTimer, 600);
 		__showCursor = !__showCursor;
 		__dirty = true;
+		__setRenderDirty ();
 		
 	}
 	
@@ -1380,6 +1386,7 @@ class TextField extends InteractiveObject {
 			
 			__showCursor = false;
 			__dirty = true;
+			__setRenderDirty ();
 			
 		}
 		
@@ -1560,6 +1567,7 @@ class TextField extends InteractiveObject {
 			
 			__dirty = true;
 			__layoutDirty = true;
+			__setRenderDirty ();
 			
 		}
 		
@@ -1580,6 +1588,7 @@ class TextField extends InteractiveObject {
 		if (value != __textEngine.background) {
 			
 			__dirty = true;
+			__setRenderDirty ();
 			
 		}
 		
@@ -1600,6 +1609,7 @@ class TextField extends InteractiveObject {
 		if (value != __textEngine.backgroundColor) {
 			
 			__dirty = true;
+			__setRenderDirty ();
 			
 		}
 		
@@ -1620,6 +1630,7 @@ class TextField extends InteractiveObject {
 		if (value != __textEngine.border) {
 			
 			__dirty = true;
+			__setRenderDirty ();
 			
 		}
 		
@@ -1640,6 +1651,7 @@ class TextField extends InteractiveObject {
 		if (value != __textEngine.borderColor) {
 			
 			__dirty = true;
+			__setRenderDirty ();
 			
 		}
 		
@@ -1677,6 +1689,7 @@ class TextField extends InteractiveObject {
 		
 		__layoutDirty = true;
 		__dirty = true;
+		__setRenderDirty ();
 		
 		return value;
 		
@@ -1696,6 +1709,7 @@ class TextField extends InteractiveObject {
 			
 			__dirty = true;
 			__layoutDirty = true;
+			__setRenderDirty ();
 			
 			__displayAsPassword = value;
 			__updateText (__text);
@@ -1764,6 +1778,7 @@ class TextField extends InteractiveObject {
 			__setTransformDirty ();
 			__dirty = true;
 			__layoutDirty = true;
+			__setRenderDirty ();
 			
 			__textEngine.height = value;
 			
@@ -1787,6 +1802,7 @@ class TextField extends InteractiveObject {
 			
 			__dirty = true;
 			__layoutDirty = true;
+			__setRenderDirty ();
 			
 		}
 		
@@ -2074,6 +2090,7 @@ class TextField extends InteractiveObject {
 			
 			__dirty = true;
 			__layoutDirty = true;
+			__setRenderDirty ();
 			
 		}
 		
@@ -2127,6 +2144,7 @@ class TextField extends InteractiveObject {
 			
 			__dirty = true;
 			__layoutDirty = true;
+			__setRenderDirty ();
 			
 		}
 		
@@ -2175,6 +2193,7 @@ class TextField extends InteractiveObject {
 		if (value != __textEngine.scrollH) {
 			
 			__dirty = true;
+			__setRenderDirty ();
 			
 		}
 		
@@ -2200,6 +2219,7 @@ class TextField extends InteractiveObject {
 		if (value != __textEngine.scrollV) {
 			
 			__dirty = true;
+			__setRenderDirty ();
 			
 		}
 		
@@ -2262,6 +2282,7 @@ class TextField extends InteractiveObject {
 		if (value != __textEngine.sharpness) {
 			
 			__dirty = true;
+			__setRenderDirty ();
 			
 		}
 		
@@ -2283,6 +2304,7 @@ class TextField extends InteractiveObject {
 			
 			__dirty = true;
 			__layoutDirty = true;
+			__setRenderDirty ();
 			
 		} else {
 			
@@ -2319,7 +2341,12 @@ class TextField extends InteractiveObject {
 	
 	private function set_textColor (value:Int):Int {
 		
-		if (value != __textFormat.color) __dirty = true;
+		if (value != __textFormat.color) {
+			
+			__dirty = true;
+			__setRenderDirty ();
+			
+		}
 		
 		for (range in __textEngine.textFormatRanges) {
 			
@@ -2379,6 +2406,7 @@ class TextField extends InteractiveObject {
 			}
 			
 			__dirty = true;
+			__setRenderDirty ();
 			
 		}
 		
@@ -2402,6 +2430,7 @@ class TextField extends InteractiveObject {
 			__setTransformDirty ();
 			__dirty = true;
 			__layoutDirty = true;
+			__setRenderDirty ();
 			
 			__textEngine.width = value;
 			
@@ -2425,6 +2454,7 @@ class TextField extends InteractiveObject {
 			
 			__dirty = true;
 			__layoutDirty = true;
+			__setRenderDirty ();
 			
 		}
 		
@@ -2455,6 +2485,7 @@ class TextField extends InteractiveObject {
 				__caretIndex = position;
 				#if !dom
 				__dirty = true;
+				__setRenderDirty ();
 				#end
 				
 			}
@@ -2561,6 +2592,7 @@ class TextField extends InteractiveObject {
 		__selectionIndex = __caretIndex;
 		#if !dom
 		__dirty = true;
+		__setRenderDirty ();
 		#end
 		
 		stage.addEventListener (MouseEvent.MOUSE_MOVE, stage_onMouseMove);

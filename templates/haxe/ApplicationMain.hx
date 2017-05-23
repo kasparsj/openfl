@@ -39,6 +39,7 @@ import haxe.macro.Expr;
 				::foreach windows::
 				{
 					allowHighDPI: ::allowHighDPI::,
+					alwaysOnTop: ::alwaysOnTop::,
 					antialiasing: ::antialiasing::,
 					background: ::background::,
 					borderless: ::borderless::,
@@ -141,7 +142,9 @@ import haxe.macro.Expr;
 			
 		} catch (e:Dynamic) {
 			
+			#if !display
 			stage.__handleError (e);
+			#end
 			
 		}
 		

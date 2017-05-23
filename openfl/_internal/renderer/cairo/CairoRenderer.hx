@@ -32,6 +32,7 @@ class CairoRenderer extends AbstractRenderer {
 		this.cairo = cairo;
 		
 		renderSession = new RenderSession ();
+		renderSession.clearDirtyFlags = true;
 		renderSession.cairo = cairo;
 		//renderSession.roundPixels = true;
 		renderSession.renderer = this;
@@ -44,9 +45,12 @@ class CairoRenderer extends AbstractRenderer {
 	
 	public override function clear ():Void {
 		
-		for (stage3D in stage.stage3Ds) {
+		cairo.identityMatrix ();
+		
+		if (stage.__clearBeforeRender) {
 			
-			stage3D.__renderCairo (stage, renderSession);
+			cairo.setSourceRGB (stage.__colorSplit[0], stage.__colorSplit[1], stage.__colorSplit[2]);
+			cairo.paint ();
 			
 		}
 		
@@ -57,16 +61,18 @@ class CairoRenderer extends AbstractRenderer {
 		
 		renderSession.allowSmoothing = (stage.quality != LOW);
 		
-		cairo.identityMatrix ();
+		stage.__renderCairo (renderSession);
 		
-		if (stage.__clearBeforeRender) {
+	}
+	
+	
+	public override function renderStage3D ():Void {
+		
+		for (stage3D in stage.stage3Ds) {
 			
-			cairo.setSourceRGB (stage.__colorSplit[0], stage.__colorSplit[1], stage.__colorSplit[2]);
-			cairo.paint ();
+			stage3D.__renderCairo (stage, renderSession);
 			
 		}
-		
-		stage.__renderCairo (renderSession);
 		
 	}
 	

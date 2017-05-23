@@ -173,6 +173,7 @@ class Stage extends DisplayObjectContainer implements IModule {
 		__logicalWidth = 0;
 		__logicalHeight = 0;
 		__displayMatrix = new Matrix ();
+		__renderDirty = true;
 		
 		stage3Ds = new Vector ();
 		stage3Ds.push (new Stage3D ());
@@ -821,6 +822,7 @@ class Stage extends DisplayObjectContainer implements IModule {
 		
 		try {
 			
+			__renderDirty = true;
 			__broadcastEvent (new Event (Event.ACTIVATE));
 			
 			focus = __cacheFocus;
@@ -928,6 +930,7 @@ class Stage extends DisplayObjectContainer implements IModule {
 		
 		try {
 			
+			__renderDirty = true;
 			__resize ();
 			
 			if (__displayState != NORMAL && !window.fullscreen) {
@@ -969,15 +972,6 @@ class Stage extends DisplayObjectContainer implements IModule {
 		
 		try {
 			
-			// TODO: Fix multiple stages more gracefully
-			
-			if (application != null && application.windows.length > 0) {
-				
-				__setTransformDirty ();
-				__setRenderDirty ();
-				
-			}
-			
 			if (__rendering) return;
 			__rendering = true;
 			
@@ -985,9 +979,11 @@ class Stage extends DisplayObjectContainer implements IModule {
 			Telemetry.__advanceFrame ();
 			#end
 			
-			if (__renderer != null) {
+			if (__renderer != null && Stage3D.__active) {
 				
 				__renderer.clear ();
+				__renderer.renderStage3D ();
+				__renderDirty = true;
 				
 			}
 			
@@ -1013,7 +1009,13 @@ class Stage extends DisplayObjectContainer implements IModule {
 			__deltaTime = 0;
 			__update (false, true);
 			
-			if (__renderer != null) {
+			if (__renderer != null /*&& __renderDirty*/) {
+				
+				if (!Stage3D.__active) {
+					
+					__renderer.clear ();
+					
+				}
 				
 				if (renderer.type == CAIRO) {
 					
@@ -1033,6 +1035,10 @@ class Stage extends DisplayObjectContainer implements IModule {
 				}
 				
 				__renderer.render ();
+				
+			} else {
+				
+				renderer.onRender.cancel ();
 				
 			}
 			
@@ -1689,18 +1695,18 @@ class Stage extends DisplayObjectContainer implements IModule {
 	}
 	
 	
-	public override function __update (transformOnly:Bool, updateChildren:Bool, ?maskGrahpics:Graphics = null):Void {
+	public override function __update (transformOnly:Bool, updateChildren:Bool, maskGraphics:Graphics = null):Void {
 		
 		if (transformOnly) {
 			
-			if (DisplayObject.__worldTransformDirty > 0) {
+			if (__transformDirty) {
 				
-				super.__update (true, updateChildren, maskGrahpics);
+				super.__update (true, updateChildren, maskGraphics);
 				
 				if (updateChildren) {
 					
-					DisplayObject.__worldTransformDirty = 0;
-					__dirty = true;
+					__transformDirty = false;
+					//__dirty = true;
 					
 				}
 				
@@ -1708,9 +1714,9 @@ class Stage extends DisplayObjectContainer implements IModule {
 			
 		} else {
 			
-			if (DisplayObject.__worldTransformDirty > 0 || __dirty || DisplayObject.__worldRenderDirty > 0) {
+			if (__transformDirty || __renderDirty) {
 				
-				super.__update (false, updateChildren, maskGrahpics);
+				super.__update (false, updateChildren, maskGraphics);
 				
 				if (updateChildren) {
 					
@@ -1718,9 +1724,7 @@ class Stage extends DisplayObjectContainer implements IModule {
 					__wasDirty = true;
 					#end
 					
-					DisplayObject.__worldTransformDirty = 0;
-					DisplayObject.__worldRenderDirty = 0;
-					__dirty = false;
+					//__dirty = false;
 					
 				}
 				
@@ -1729,7 +1733,7 @@ class Stage extends DisplayObjectContainer implements IModule {
 				// If we were dirty last time, we need at least one more
 				// update in order to clear "changed" properties
 				
-				super.__update (false, updateChildren, maskGrahpics);
+				super.__update (false, updateChildren, maskGraphics);
 				
 				if (updateChildren) {
 					

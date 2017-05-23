@@ -70,6 +70,8 @@ class DisplayObjectContainer extends InteractiveObject {
 				__children.remove (child);
 				__children.insert (index, child);
 				
+				__setRenderDirty ();
+				
 			}
 			
 		} else {
@@ -316,6 +318,8 @@ class DisplayObjectContainer extends InteractiveObject {
 			__children[index1] = child2;
 			__children[index2] = child1;
 			
+			__setRenderDirty ();
+			
 		}
 		
 	}
@@ -327,6 +331,7 @@ class DisplayObjectContainer extends InteractiveObject {
 		__children[index1] = __children[index2];
 		__children[index2] = swap;
 		swap = null;
+		__setRenderDirty ();
 		
 	}
 	
@@ -441,15 +446,18 @@ class DisplayObjectContainer extends InteractiveObject {
 		
 		if (__scrollRect != null) {
 			
-			var point = Point.__temp;
+			var point = Point.__pool.get ();
 			point.setTo (x, y);
 			__getRenderTransform ().__transformInversePoint (point);
 			
 			if (!__scrollRect.containsPoint (point)) {
 				
+				Point.__pool.release (point);
 				return false;
 				
 			}
+			
+			Point.__pool.release (point);
 			
 		}
 		
@@ -570,11 +578,28 @@ class DisplayObjectContainer extends InteractiveObject {
 		
 		super.__renderCairo (renderSession);
 		
+		if (__cacheBitmap != null && !__cacheBitmapRender) return;
+		
 		renderSession.maskManager.pushObject (this);
 		
-		for (child in __children) {
+		if (renderSession.clearDirtyFlags) {
 			
-			child.__renderCairo (renderSession);
+			for (child in __children) {
+				
+				child.__renderCairo (renderSession);
+				child.__renderDirty = false;
+				
+			}
+			
+			__renderDirty = false;
+			
+		} else {
+			
+			for (child in __children) {
+				
+				child.__renderCairo (renderSession);
+				
+			}
 			
 		}
 		
@@ -623,11 +648,28 @@ class DisplayObjectContainer extends InteractiveObject {
 		
 		super.__renderCanvas (renderSession);
 		
+		if (__cacheBitmap != null && !__cacheBitmapRender) return;
+		
 		renderSession.maskManager.pushObject (this);
 		
-		for (child in __children) {
+		if (renderSession.clearDirtyFlags) {
 			
-			child.__renderCanvas (renderSession);
+			for (child in __children) {
+				
+				child.__renderCanvas (renderSession);
+				child.__renderDirty = false;
+				
+			}
+			
+			__renderDirty = false;
+			
+		} else {
+			
+			for (child in __children) {
+				
+				child.__renderCanvas (renderSession);
+				
+			}
 			
 		}
 		
@@ -678,11 +720,28 @@ class DisplayObjectContainer extends InteractiveObject {
 		
 		super.__renderDOM (renderSession);
 		
+		if (__cacheBitmap != null && !__cacheBitmapRender) return;
+		
 		renderSession.maskManager.pushObject (this);
 		
-		for (child in __children) {
+		if (renderSession.clearDirtyFlags) {
 			
-			child.__renderDOM (renderSession);
+			for (child in __children) {
+				
+				child.__renderDOM (renderSession);
+				child.__renderDirty = false;
+				
+			}
+			
+			__renderDirty = false;
+			
+		} else {
+			
+			for (child in __children) {
+				
+				child.__renderDOM (renderSession);
+				
+			}
 			
 		}
 		
@@ -711,12 +770,29 @@ class DisplayObjectContainer extends InteractiveObject {
 		
 		super.__renderGL (renderSession);
 		
+		if (__cacheBitmap != null && !__cacheBitmapRender) return;
+		
 		renderSession.maskManager.pushObject (this);
 		renderSession.filterManager.pushObject (this);
 		
-		for (child in __children) {
+		if (renderSession.clearDirtyFlags) {
 			
-			child.__renderGL (renderSession);
+			for (child in __children) {
+				
+				child.__renderGL (renderSession);
+				child.__renderDirty = false;
+				
+			}
+			
+			__renderDirty = false;
+			
+		} else {
+			
+			for (child in __children) {
+				
+				child.__renderGL (renderSession);
+				
+			}
 			
 		}
 		
@@ -747,6 +823,27 @@ class DisplayObjectContainer extends InteractiveObject {
 			for (child in __children) {
 				
 				child.__setStageReference (stage);
+				
+			}
+			
+		}
+		
+	}
+	
+	
+	private override function __setTransformDirty ():Void {
+		
+		if (!__transformDirty) {
+			
+			super.__setTransformDirty ();
+			
+			if (__children != null) {
+				
+				for (child in __children) {
+					
+					child.__setTransformDirty ();
+					
+				}
 				
 			}
 			

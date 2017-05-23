@@ -3,9 +3,9 @@ package openfl.display;
 
 import haxe.Timer;
 import lime.graphics.opengl.GL;
+import lime.graphics.GLRenderContext;
 import openfl._internal.renderer.opengl.GLStage3D;
 import openfl._internal.renderer.RenderSession;
-import openfl.display.OpenGLView;
 import openfl.display3D.Context3D;
 import openfl.display3D.Context3DBlendFactor;
 import openfl.display3D.Context3DProfile;
@@ -28,11 +28,15 @@ import js.Browser;
 #end
 
 @:access(lime.graphics.opengl.GL)
+@:access(lime._backend.html5.HTML5GLRenderContext)
+@:access(lime._backend.native.NativeGLRenderContext)
 @:access(openfl.display3D.Context3D)
 
 
 class Stage3D extends EventDispatcher {
 	
+	
+	private static var __active:Bool;
 	
 	public var context3D (default, null):Context3D;
 	public var visible:Bool;
@@ -44,6 +48,7 @@ class Stage3D extends EventDispatcher {
 	
 	#if (js && html5)
 	private var __canvas:CanvasElement;
+	private var __renderContext:GLRenderContext;
 	private var __style:CSSStyleDeclaration;
 	private var __webgl:RenderingContext;
 	#end
@@ -93,7 +98,6 @@ class Stage3D extends EventDispatcher {
 		} else {
 			
 			#if (js && html5)
-			
 			__canvas = cast Browser.document.createElement ("canvas");
 			__canvas.width = stage.stageWidth;
 			__canvas.height = stage.stageHeight;
@@ -121,7 +125,8 @@ class Stage3D extends EventDispatcher {
 				
 				// TODO: Need to handle renderSession/context better
 				
-				GL.context = cast __webgl;
+				__renderContext = new GLRenderContext (cast __webgl);
+				GL.context = __renderContext;
 				
 				context3D = new Context3D (this, renderSession);
 				
@@ -210,7 +215,7 @@ class Stage3D extends EventDispatcher {
 		if (context3D != null) {
 			
 			#if (js && html5)
-			GL.context = cast __webgl;
+			GL.context = __renderContext;
 			#end
 			
 			__resetContext3DStates ();

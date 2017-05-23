@@ -5,7 +5,6 @@ import lime.graphics.GLRenderContext;
 import lime.math.Matrix4;
 import openfl._internal.renderer.AbstractRenderer;
 import openfl.display.BitmapData;
-import openfl.display.OpenGLView;
 import openfl.display.Stage;
 import openfl.geom.Matrix;
 
@@ -54,6 +53,7 @@ class GLRenderer extends AbstractRenderer {
 		values = new Array ();
 		
 		renderSession = new RenderSession ();
+		renderSession.clearDirtyFlags = true;
 		renderSession.gl = gl;
 		//renderSession.roundPixels = true;
 		renderSession.renderer = this;
@@ -91,12 +91,6 @@ class GLRenderer extends AbstractRenderer {
 		
 		gl.clear (gl.COLOR_BUFFER_BIT);
 		
-		for (stage3D in stage.stage3Ds) {
-			
-			stage3D.__renderGL (stage, renderSession);
-			
-		}
-		
 	}
 	
 	
@@ -114,7 +108,7 @@ class GLRenderer extends AbstractRenderer {
 	
 	public function getMatrix (transform:Matrix):Array<Float> {
 		
-		var _matrix = Matrix.__temp;
+		var _matrix = Matrix.__pool.get ();
 		_matrix.copyFrom (transform);
 		_matrix.concat (displayMatrix);
 		
@@ -139,6 +133,8 @@ class GLRenderer extends AbstractRenderer {
 			values[i] = matrix[i];
 			
 		}
+		
+		Matrix.__pool.release (_matrix);
 		
 		return values;
 		
@@ -232,6 +228,17 @@ class GLRenderer extends AbstractRenderer {
 			}
 			
 			gl.disable (gl.SCISSOR_TEST);
+			
+		}
+		
+	}
+	
+	
+	public override function renderStage3D ():Void {
+		
+		for (stage3D in stage.stage3Ds) {
+			
+			stage3D.__renderGL (stage, renderSession);
 			
 		}
 		
