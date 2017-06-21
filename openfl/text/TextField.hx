@@ -926,6 +926,9 @@ class TextField extends InteractiveObject {
 			//format.leading = Std.int (font.leading / 20 + (format.size * 0.2) #if flash + 2 #end);
 			//embedFonts = true;
 			
+			format.__ascent = ((font.ascent / 20) / 1024) * format.size;
+			format.__descent = ((font.descent / 20) / 1024) * format.size;
+			
 		}
 		
 		format.font = symbol.fontName;
@@ -974,8 +977,6 @@ class TextField extends InteractiveObject {
 			format.rightMargin = Std.int (symbol.rightMargin / 20);
 			format.indent = Std.int (symbol.indent / 20);
 			format.leading = Std.int (symbol.leading / 20);
-			
-			if (embedFonts) format.leading += 4; // TODO: Why is this necessary?
 			
 		}
 		
