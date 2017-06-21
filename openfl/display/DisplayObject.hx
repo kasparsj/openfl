@@ -768,9 +768,16 @@ class DisplayObject extends EventDispatcher implements IBitmapDrawable #if openf
 		__updateCacheBitmap (renderSession);
 		
 		if (__cacheBitmap != null && !__cacheBitmapRender) {
-			
-			__cacheBitmap.stage = stage;
+
+			var stageReferenceSet:Bool = false;
+			if (__worldVisible) {
+				__cacheBitmap.stage = stage;
+				stageReferenceSet = true;
+			}
 			DOMBitmap.render (__cacheBitmap, renderSession);
+			if (stageReferenceSet) {
+				__cacheBitmap.stage = null;
+			}
 			
 		} else {
 			
