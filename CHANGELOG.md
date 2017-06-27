@@ -1,8 +1,15 @@
+5.1.5 (06/21/2017)
+------------------
+
+* Fixed regression where `loader.unload()` set `contentLoaderInfo` to `null`
+* Fixed possible build error in URLLoader
+
+
 5.1.4 (06/20/2017)
 ------------------
 
 * Deprecated `handler` callbacks in `openfl.utils.Assets.load*` methods
-* Improved improved the leading of embedded SWF fonts on native
+* Improved the leading of embedded SWF fonts on native
 * Improved `addChild` to throw an error when adding a `null` child
 * Improved loaded asset libraries to register using `loaderURL` as the name
 * Improved the behavior of `ExternalInterface` when errors are thrown
