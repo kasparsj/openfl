@@ -11,6 +11,7 @@ import lime.ui.MouseCursor;
 import lime.utils.Log;
 import openfl._internal.renderer.cairo.CairoTextField;
 import openfl._internal.renderer.canvas.CanvasTextField;
+import openfl._internal.renderer.dom.DOMBitmap;
 import openfl._internal.renderer.dom.DOMTextField;
 import openfl._internal.renderer.opengl.GLRenderer;
 import openfl._internal.renderer.RenderSession;
@@ -24,6 +25,8 @@ import openfl._internal.text.TextLayoutGroup;
 import openfl.display.DisplayObject;
 import openfl.display.Graphics;
 import openfl.display.InteractiveObject;
+import openfl.display.IShaderDrawable;
+import openfl.display.Shader;
 import openfl.events.Event;
 import openfl.events.FocusEvent;
 import openfl.events.MouseEvent;
@@ -43,12 +46,13 @@ import js.html.DivElement;
 #end
 
 @:access(openfl.display.Graphics)
+@:access(openfl.geom.ColorTransform)
 @:access(openfl.geom.Rectangle)
 @:access(openfl._internal.text.TextEngine)
 @:access(openfl.text.TextFormat)
 
 
-class TextField extends InteractiveObject {
+class TextField extends InteractiveObject implements IShaderDrawable {
 	
 	
 	private static var __defaultTextFormat:TextFormat;
@@ -80,6 +84,7 @@ class TextField extends InteractiveObject {
 	public var selectable (get, set):Bool;
 	public var selectionBeginIndex (get, never):Int;
 	public var selectionEndIndex (get, never):Int;
+	@:beta public var shader:Shader;
 	public var sharpness (get, set):Float;
 	public var text (get, set):UTF8String;
 	public var textColor (get, set):Int;
@@ -925,10 +930,10 @@ class TextField extends InteractiveObject {
 			//format.italic = font.italic;
 			//format.leading = Std.int (font.leading / 20 + (format.size * 0.2) #if flash + 2 #end);
 			//embedFonts = true;
-
+			
 			format.__ascent = ((font.ascent / 20) / 1024);
 			format.__descent = ((font.descent / 20) / 1024);
-
+			
 		}
 		
 		format.font = symbol.fontName;
@@ -953,6 +958,24 @@ class TextField extends InteractiveObject {
 					}
 					
 				}
+			
+		}
+		
+		if (!found) {
+			
+			var alpha = ~/[^a-zA-Z]+/;
+			
+			for (font in Font.enumerateFonts ()) {
+				
+				if (alpha.replace (font.fontName, "").substr (0, symbol.fontName.length) == symbol.fontName) {
+					
+					format.font = font.fontName;
+					found = true;
+					break;
+					
+				}
+				
+			}
 			
 		}
 		
@@ -1247,6 +1270,13 @@ class TextField extends InteractiveObject {
 	
 	private override function __renderCanvas (renderSession:RenderSession):Void {
 		
+		// TODO: Better DOM workaround on cacheAsBitmap
+		#if (js && html5 && dom)
+		if (__graphics.__canvas == null) {
+			__dirty = true;
+		}
+		#end
+		
 		CanvasTextField.render (this, renderSession, __worldTransform);
 		
 		if (__textEngine.antiAliasType == ADVANCED && __textEngine.gridFitType == PIXEL) {
@@ -1285,7 +1315,29 @@ class TextField extends InteractiveObject {
 	private override function __renderDOM (renderSession:RenderSession):Void {
 		
 		#if dom
-		DOMTextField.render (this, renderSession);
+		__updateCacheBitmap (renderSession, !__worldColorTransform.__isDefault ());
+		
+		if (__cacheBitmap != null && !__cacheBitmapRender) {
+			
+			__renderDOMClear (renderSession);
+			__cacheBitmap.stage = stage;
+			
+			DOMBitmap.render (__cacheBitmap, renderSession);
+			
+		} else {
+			
+			DOMTextField.render (this, renderSession);
+			
+		}
+		#end
+		
+	}
+	
+	
+	private override function __renderDOMClear (renderSession:RenderSession):Void {
+		
+		#if dom
+		DOMTextField.clear (this, renderSession);
 		#end
 		
 	}
