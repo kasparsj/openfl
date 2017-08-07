@@ -31,6 +31,7 @@ import openfl.events.Event;
 import openfl.events.FocusEvent;
 import openfl.events.MouseEvent;
 import openfl.events.TextEvent;
+import openfl.filters.GlowFilter;
 import openfl.geom.Matrix;
 import openfl.geom.Rectangle;
 import openfl.net.URLRequest;
@@ -1699,6 +1700,15 @@ class TextField extends InteractiveObject implements IShaderDrawable {
 		__updateLayout ();
 		
 		return __textEngine.bottomScrollV;
+		
+	}
+	
+	
+	private override function get_cacheAsBitmap ():Bool {
+		
+		// HACK
+		if (__filters != null && __filters.length == 1 && Std.is (__filters[0], GlowFilter)) return false;
+		return super.get_cacheAsBitmap ();
 		
 	}
 	
