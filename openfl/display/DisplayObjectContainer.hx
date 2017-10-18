@@ -410,6 +410,36 @@ class DisplayObjectContainer extends InteractiveObject {
 	}
 	
 	
+	private override function __getFilterBounds (rect:Rectangle, matrix:Matrix):Void {
+		
+		super.__getFilterBounds (rect, matrix);
+		
+		if (__children.length == 0) return;
+		
+		if (matrix != null) {
+			
+			__updateTransforms (matrix);
+			__updateChildren (true);
+			
+		}
+		
+		for (child in __children) {
+			
+			if (child.__scaleX == 0 || child.__scaleY == 0 || child.__isMask) continue;
+			child.__getFilterBounds (rect, child.__worldTransform);
+			
+		}
+		
+		if (matrix != null) {
+			
+			__updateTransforms ();
+			__updateChildren (true);
+			
+		}
+		
+	}
+	
+	
 	private override function __getRenderBounds (rect:Rectangle, matrix:Matrix):Void {
 		
 		if (__scrollRect != null) {
@@ -859,17 +889,17 @@ class DisplayObjectContainer extends InteractiveObject {
 	}
 	
 	
-	private override function __setTransformDirty ():Void {
+	private override function __setWorldTransformInvalid ():Void {
 		
-		if (!__transformDirty) {
+		if (!__worldTransformInvalid) {
 			
-			super.__setTransformDirty ();
+			__worldTransformInvalid = true;
 			
 			if (__children != null) {
 				
 				for (child in __children) {
 					
-					child.__setTransformDirty ();
+					child.__setWorldTransformInvalid ();
 					
 				}
 				

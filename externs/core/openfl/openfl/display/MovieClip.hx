@@ -8,7 +8,7 @@ package openfl.display; #if (display || !flash)
  *
  * Unlike the Sprite object, a MovieClip object has a timeline.
  *
- * >In Flash Professional, the methods for the MovieClip class provide the
+ * In Flash Professional, the methods for the MovieClip class provide the
  * same functionality as actions that target movie clips. Some additional
  * methods do not have equivalent actions in the Actions toolbox in the
  * Actions panel in the Flash authoring tool. 
@@ -36,7 +36,7 @@ package openfl.display; #if (display || !flash)
  * MovieClip.opaqueBackground property for a suitable device, define
  * FEATURE_BITMAPCACHE in your project.
  */
-extern class MovieClip extends Sprite #if openfl_dynamic implements Dynamic<DisplayObject> #end {
+extern class MovieClip extends Sprite {
 	
 	
 	/**
@@ -145,7 +145,7 @@ extern class MovieClip extends Sprite #if openfl_dynamic implements Dynamic<Disp
 	 *              specified scene.
 	 * @param scene The name of the scene to play. This parameter is optional.
 	 */
-	public function gotoAndPlay (frame:Dynamic, scene:String = null):Void;
+	public function gotoAndPlay (frame:#if (haxe_ver >= "3.4.2") Any #else Dynamic #end, scene:String = null):Void;
 	
 	
 	/**
@@ -165,7 +165,7 @@ extern class MovieClip extends Sprite #if openfl_dynamic implements Dynamic<Disp
 	 * @throws ArgumentError If the `scene` or `frame`
 	 *                       specified are not found in this movie clip.
 	 */
-	public function gotoAndStop (frame:Dynamic, scene:String = null):Void;
+	public function gotoAndStop (frame:#if (haxe_ver >= "3.4.2") Any #else Dynamic #end, scene:String = null):Void;
 	
 	
 	/**
