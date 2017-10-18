@@ -32,9 +32,6 @@ import haxe.macro.Expr;
 			orientation: "::WIN_ORIENTATION::",
 			packageName: "::meta.packageName::",
 			version: "::meta.version::",
-			#if flash
-			assetsPrefix: flash.Lib.current.loaderInfo.parameters.assetsPrefix,
-			#end
 			windows: [
 				::foreach windows::
 				{
@@ -323,7 +320,7 @@ class DocumentClass {
 				var fields = Context.getBuildFields ();
 				
 				var method = macro {
-
+					
 					current.addChild (this);
 					super ();
 					dispatchEvent (new openfl.events.Event (openfl.events.Event.ADDED_TO_STAGE, false, false));

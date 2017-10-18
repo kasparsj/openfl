@@ -937,8 +937,6 @@ class TextEngine {
 				heightValue = ascent + descent + leading;
 				
 				#end
-
-				maxHeightValue = Math.max(maxHeightValue, heightValue);
 				
 			}
 			
@@ -1126,7 +1124,7 @@ class TextEngine {
 				
 				textIndex = breakIndex + 1;
 				breakIndex = getLineBreakIndex (textIndex);
-
+				
 			} else if (formatRange.end >= spaceIndex && spaceIndex > -1 && textIndex < formatRange.end) {
 				// if a space is the next thing that needs to be dealt with
 				
@@ -1223,7 +1221,7 @@ class TextEngine {
 					}
 					
 					if (wrap) {
-
+						
 						if (lineFormat.align != JUSTIFY && (layoutGroup != null || layoutGroups.length > 0)) {
 							
 							var previous = layoutGroup;
@@ -1236,7 +1234,7 @@ class TextEngine {
 							previous.endIndex--;
 							
 						}
-
+						
 						var i = layoutGroups.length - 1;
 						var offsetCount = 0;
 						
@@ -1263,7 +1261,7 @@ class TextEngine {
 							alignBaseline();
 							
 						}
-
+						
 						offsetX = 2;
 						
 						if (offsetCount > 0) {
