@@ -135,7 +135,6 @@ class TextField extends InteractiveObject implements IShaderDrawable {
 		__layoutDirty = true;
 		__offsetX = 0;
 		__offsetY = 0;
-		__tabEnabled = true;
 		__mouseWheelEnabled = true;
 		__text = "";
 		
@@ -588,9 +587,9 @@ class TextField extends InteractiveObject implements IShaderDrawable {
 		if (endIndex < beginIndex) return;
 		
 		if (beginIndex == 0 && endIndex >= max) {
-
+			
 			// set text format for the whole textfield
-
+			
 			__textFormat.__merge (format);
 			
 			if (__textEngine.textFormatRanges.length > 1) {
@@ -608,16 +607,16 @@ class TextField extends InteractiveObject implements IShaderDrawable {
 			
 			var index = __textEngine.textFormatRanges.length;
 			var searchIndex;
-
+			
 			while (index > 0) {
 				
 				index--;
 				range = __textEngine.textFormatRanges[index];
 				
 				if (range.start == beginIndex && range.end == endIndex) {
-
+					
 					// the new incoming text format range matches an existing range exactly, just replace it
-
+					
 					range.format = __defaultTextFormat.clone ();
 					range.format.__merge (format);
 					return;
@@ -625,9 +624,9 @@ class TextField extends InteractiveObject implements IShaderDrawable {
 				}
 				
 				if (range.start >= beginIndex && range.end <= endIndex) {
-
+					
 					// the new incoming text format range completely encompasses this existing range, let's remove it
-
+					
 					searchIndex = __textEngine.textFormatRanges.indexOf (range);
 					
 					if (searchIndex > -1) {
@@ -641,13 +640,13 @@ class TextField extends InteractiveObject implements IShaderDrawable {
 			}
 			
 			var prevRange = null, nextRange = null;
-
+			
 			// find the ranges before and after the new incoming range
-
+			
 			if (beginIndex > 0) {
-
+				
 				for (i in 0...__textEngine.textFormatRanges.length) {
-
+					
 					range = __textEngine.textFormatRanges[i];
 					
 					if (range.end >= beginIndex) {
@@ -655,26 +654,26 @@ class TextField extends InteractiveObject implements IShaderDrawable {
 						prevRange = range;
 						
 						break;
-
+						
 					}
 					
 				}
 			}
-
+			
 			if (endIndex < max) {
-
+				
 				var ni = __textEngine.textFormatRanges.length;
-
-				while( --ni >= 0 ) {
-
+				
+				while (--ni >= 0 ) {
+					
 					range = __textEngine.textFormatRanges[ni];
-
+					
 					if (range.start <= endIndex) {
 						
 						nextRange = range;
 						
 						break;
-
+						
 					}
 					
 				}
@@ -682,9 +681,9 @@ class TextField extends InteractiveObject implements IShaderDrawable {
 			}
 			
 			if (nextRange == prevRange) {
-
+				
 				// the new incoming text format range is completely within this existing range, let's divide it up
-
+				
 				nextRange = new TextFormatRange (nextRange.format.clone (), nextRange.start, nextRange.end);
 				__textEngine.textFormatRanges.push (nextRange);
 				
@@ -728,6 +727,13 @@ class TextField extends InteractiveObject implements IShaderDrawable {
 		__dirty = true;
 		__layoutDirty = true;
 		__setRenderDirty ();
+		
+	}
+	
+	
+	private override function __allowMouseFocus ():Bool {
+		
+		return __textEngine.type == INPUT || tabEnabled;
 		
 	}
 	
@@ -2173,6 +2179,13 @@ class TextField extends InteractiveObject implements IShaderDrawable {
 		}
 		
 		return __textEngine.sharpness = value;
+		
+	}
+	
+	
+	private override function get_tabEnabled ():Bool {
+		
+		return (__tabEnabled == null ? __textEngine.type == INPUT : __tabEnabled);
 		
 	}
 	
