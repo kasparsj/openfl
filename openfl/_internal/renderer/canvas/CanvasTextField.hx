@@ -38,76 +38,6 @@ class CanvasTextField {
 	#end
 	
 	
-	public static function disableInputMode (textEngine:TextEngine):Void {
-		
-		//#if (js && html5)
-		//textEngine.this_onRemovedFromStage (null);
-		//#end
-		
-	}
-	
-	
-	public static function enableInputMode (textEngine:TextEngine):Void {
-		
-		#if (js && html5)
-		
-		if (textEngine.__hiddenInput == null) {
-			
-			textEngine.__hiddenInput = cast Browser.document.createElement ('input');
-			var hiddenInput = textEngine.__hiddenInput;
-			hiddenInput.type = 'text';
-			hiddenInput.style.position = 'absolute';
-			hiddenInput.style.opacity = "0";
-			hiddenInput.style.color = "transparent";
-			
-			// TODO: Position for mobile browsers better
-			
-			hiddenInput.style.left = "0px";
-			hiddenInput.style.top = "50%";
-			
-			if (~/(iPad|iPhone|iPod).*OS 8_/gi.match (Browser.window.navigator.userAgent)) {
-				
-				hiddenInput.style.fontSize = "0px";
-				hiddenInput.style.width = '0px';
-				hiddenInput.style.height = '0px';
-				
-			} else {
-				
-				hiddenInput.style.width = '1px';
-				hiddenInput.style.height = '1px';
-				
-			}
-			
-			untyped (hiddenInput.style).pointerEvents = 'none';
-			hiddenInput.style.zIndex = "-10000000";
-			
-			if (textEngine.maxChars > 0) {
-				
-				hiddenInput.maxLength = textEngine.maxChars;
-				
-			}
-			
-			Browser.document.body.appendChild (hiddenInput);
-			hiddenInput.value = textEngine.text;
-			
-		}
-		
-		//if (textField.stage != null) {
-			//
-			//textEngine.this_onAddedToStage (null);
-			//
-		//} else {
-			//
-			//textField.addEventListener (Event.ADDED_TO_STAGE, textEngine.this_onAddedToStage);
-			//textField.addEventListener (Event.REMOVED_FROM_STAGE, textEngine.this_onRemovedFromStage);
-			//
-		//}
-		
-		#end
-		
-	}
-	
-	
 	public static inline function render (textField:TextField, renderSession:RenderSession, transform:Matrix):Void {
 		
 		#if (js && html5)
@@ -234,8 +164,7 @@ class CanvasTextField {
 					context.textBaseline = "top";
 					//context.textBaseline = "alphabetic";
 					context.textAlign = "start";
-					
-					var scrollX = -textField.scrollH;
+
 					var scrollY = 0.0;
 					
 					for (i in 0...textField.scrollV - 1) {
@@ -278,7 +207,7 @@ class CanvasTextField {
 								
 								context.strokeStyle = "#" + StringTools.hex (glowFilter.color & 0xFFFFFF, 6);
 								context.lineWidth = Math.max (glowFilter.blurX, glowFilter.blurY);
-								context.strokeText (text.substring (group.startIndex, group.endIndex), group.offsetX + scrollX, group.offsetY + offsetY + scrollY);
+								context.strokeText (text.substring (group.startIndex, group.endIndex), group.offsetX - textField.scrollH, group.offsetY + offsetY + scrollY);
 								
 								context.strokeStyle = null;
 								context.globalAlpha = cacheAlpha;
@@ -287,7 +216,7 @@ class CanvasTextField {
 							
 						}
 						
-						context.fillText (text.substring (group.startIndex, group.endIndex), group.offsetX + scrollX, group.offsetY + offsetY + scrollY);
+						context.fillText (text.substring (group.startIndex, group.endIndex), group.offsetX - textField.scrollH, group.offsetY + offsetY + scrollY);
 						
 						if (textField.__caretIndex > -1 && textEngine.selectable) {
 							
@@ -304,8 +233,8 @@ class CanvasTextField {
 										
 									}
 
-									context.fillRect (scrollX + group.offsetX + advance, scrollY + group.offsetY, 1, group.height);
-									
+									context.fillRect (group.offsetX + advance - textField.scrollH, scrollY + 2, 1, TextEngine.getFormatHeight (textField.defaultTextFormat) - 1);
+
 								}
 								
 							} else if ((group.startIndex <= textField.__caretIndex && group.endIndex >= textField.__caretIndex) || (group.startIndex <= textField.__selectionIndex && group.endIndex >= textField.__selectionIndex) || (group.startIndex > textField.__caretIndex && group.endIndex < textField.__selectionIndex) || (group.startIndex > textField.__selectionIndex && group.endIndex < textField.__caretIndex)) {
@@ -343,12 +272,12 @@ class CanvasTextField {
 								if (start != null && end != null) {
 									
 									context.fillStyle = "#000000";
-									context.fillRect (scrollX + start.x, scrollY + start.y, end.x - start.x, group.height);
+									context.fillRect (start.x - textField.scrollH, scrollY + start.y, end.x - start.x, group.height);
 									context.fillStyle = "#FFFFFF";
 									
 									// TODO: fill only once
 									
-									context.fillText (text.substring (selectionStart, selectionEnd), scrollX + start.x, group.offsetY + offsetY + scrollY);
+									context.fillText (text.substring (selectionStart, selectionEnd), start.x - textField.scrollH, group.offsetY + offsetY + scrollY);
 									
 								}
 								
@@ -391,8 +320,7 @@ class CanvasTextField {
 					}
 					
 					if (textField.__caretIndex > -1 && textEngine.selectable && textField.__showCursor) {
-						
-						var scrollX = -textField.scrollH;
+
 						var scrollY = 0.0;
 						
 						for (i in 0...textField.scrollV - 1) {
@@ -403,9 +331,9 @@ class CanvasTextField {
 						
 						context.beginPath ();
 						context.strokeStyle = "#" + StringTools.hex (textField.defaultTextFormat.color & 0xFFFFFF, 6);
-						context.moveTo (scrollX + 2.5, scrollY + 2.5);
+						context.moveTo (2.5 - textField.scrollH, scrollY + 2.5);
 						context.lineWidth = 1;
-						context.lineTo (scrollX + 2.5, scrollY + TextEngine.getFormatHeight (textField.defaultTextFormat) - 1);
+						context.lineTo (2.5 - textField.scrollH, scrollY + TextEngine.getFormatHeight (textField.defaultTextFormat) - 1);
 						context.stroke ();
 						context.closePath ();
 						
