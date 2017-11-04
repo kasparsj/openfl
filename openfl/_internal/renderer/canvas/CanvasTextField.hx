@@ -165,6 +165,7 @@ class CanvasTextField {
 					//context.textBaseline = "alphabetic";
 					context.textAlign = "start";
 
+					var scrollX = -textField.scrollH;
 					var scrollY = 0.0;
 					
 					for (i in 0...textField.scrollV - 1) {
@@ -207,7 +208,7 @@ class CanvasTextField {
 								
 								context.strokeStyle = "#" + StringTools.hex (glowFilter.color & 0xFFFFFF, 6);
 								context.lineWidth = Math.max (glowFilter.blurX, glowFilter.blurY);
-								context.strokeText (text.substring (group.startIndex, group.endIndex), group.offsetX - textField.scrollH, group.offsetY + offsetY + scrollY);
+								context.strokeText (text.substring (group.startIndex, group.endIndex), group.offsetX + scrollX, group.offsetY + offsetY + scrollY);
 								
 								context.strokeStyle = null;
 								context.globalAlpha = cacheAlpha;
@@ -216,7 +217,7 @@ class CanvasTextField {
 							
 						}
 						
-						context.fillText (text.substring (group.startIndex, group.endIndex), group.offsetX - textField.scrollH, group.offsetY + offsetY + scrollY);
+						context.fillText (text.substring (group.startIndex, group.endIndex), group.offsetX + scrollX, group.offsetY + offsetY + scrollY);
 						
 						if (textField.__caretIndex > -1 && textEngine.selectable) {
 							
@@ -233,6 +234,14 @@ class CanvasTextField {
 										
 									}
 
+									var scrollY = 0.0;
+									
+									for (i in 0...textField.scrollV - 1) {
+										
+										scrollY -= textEngine.lineHeights[i];
+										
+									}
+									
 									context.fillRect (group.offsetX + advance - textField.scrollH, scrollY + 2, 1, TextEngine.getFormatHeight (textField.defaultTextFormat) - 1);
 
 								}
@@ -272,12 +281,12 @@ class CanvasTextField {
 								if (start != null && end != null) {
 									
 									context.fillStyle = "#000000";
-									context.fillRect (start.x - textField.scrollH, scrollY + start.y, end.x - start.x, group.height);
+									context.fillRect (start.x, start.y, end.x - start.x, group.height);
 									context.fillStyle = "#FFFFFF";
 									
 									// TODO: fill only once
 									
-									context.fillText (text.substring (selectionStart, selectionEnd), start.x - textField.scrollH, group.offsetY + offsetY + scrollY);
+									context.fillText (text.substring (selectionStart, selectionEnd), scrollX + start.x, group.offsetY + offsetY + scrollY);
 									
 								}
 								
@@ -321,6 +330,7 @@ class CanvasTextField {
 					
 					if (textField.__caretIndex > -1 && textEngine.selectable && textField.__showCursor) {
 
+						var scrollX = -textField.scrollH;
 						var scrollY = 0.0;
 						
 						for (i in 0...textField.scrollV - 1) {
@@ -331,9 +341,9 @@ class CanvasTextField {
 						
 						context.beginPath ();
 						context.strokeStyle = "#" + StringTools.hex (textField.defaultTextFormat.color & 0xFFFFFF, 6);
-						context.moveTo (2.5 - textField.scrollH, scrollY + 2.5);
+						context.moveTo (scrollX + 2.5, scrollY + 2.5);
 						context.lineWidth = 1;
-						context.lineTo (2.5 - textField.scrollH, scrollY + TextEngine.getFormatHeight (textField.defaultTextFormat) - 1);
+						context.lineTo (scrollX + 2.5, scrollY + TextEngine.getFormatHeight (textField.defaultTextFormat) - 1);
 						context.stroke ();
 						context.closePath ();
 						
