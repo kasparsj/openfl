@@ -2,6 +2,7 @@ package openfl.text;
 
 
 import lime.text.Font in LimeFont;
+import openfl.utils.Assets;
 import openfl.utils.ByteArray;
 
 #if !openfl_debug
@@ -17,7 +18,10 @@ class Font extends LimeFont {
 	public var fontStyle:FontStyle;
 	public var fontType:FontType;
 	
+	private static var __fontByName = new Map<String, Font> ();
 	private static var __registeredFonts = new Array<Font> ();
+	
+	private var __initialized:Bool;
 	
 	
 	public function new (name:String = null) {
@@ -75,6 +79,7 @@ class Font extends LimeFont {
 			}*/
 			
 			__registeredFonts.push (instance);
+			__fontByName[instance.name] = instance;
 			
 		}
 		
@@ -87,6 +92,30 @@ class Font extends LimeFont {
 		font.name = value.name;
 		font.src = value.src;
 		return font;
+		
+	}
+	
+	
+	private function __initialize ():Bool {
+		
+		#if native
+		if (!__initialized) {
+			
+			if (src != null) {
+				
+				__initialized = true;
+				
+			} #if (lime >= "5.9.0") else if (src == null && __fontID != null && Assets.isLocal (__fontID)) {
+				
+				__fromBytes (Assets.getBytes (__fontID));
+				__initialized = true;
+				
+			} #end
+			
+		}
+		#end
+		
+		return __initialized;
 		
 	}
 	

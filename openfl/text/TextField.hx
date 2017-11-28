@@ -173,6 +173,7 @@ class TextField extends InteractiveObject implements IShaderDrawable {
 		__updateText (__text + text);
 		
 		__textEngine.textFormatRanges[__textEngine.textFormatRanges.length - 1].end = __text.length;
+		__updateScrollH ();
 		
 	}
 	
@@ -187,18 +188,22 @@ class TextField extends InteractiveObject implements IShaderDrawable {
 			
 			if (charIndex >= group.startIndex && charIndex <= group.endIndex) {
 				
-				var x = group.offsetX;
-				
-				for (i in 0...(charIndex - group.startIndex)) {
+				try {
 					
-					x += group.getAdvance (i);
+					var x = group.offsetX;
 					
-				}
-				
-				// TODO: Is this actually right for combining characters?
-				var lastPosition = group.getAdvance (charIndex - group.startIndex);
-				
-				return new Rectangle (x, group.offsetY, lastPosition, group.ascent + group.descent);
+					for (i in 0...(charIndex - group.startIndex)) {
+						
+						x += group.getAdvance (i);
+						
+					}
+					
+					// TODO: Is this actually right for combining characters?
+					var lastPosition = group.getAdvance (charIndex - group.startIndex);
+					
+					return new Rectangle (x, group.offsetY, lastPosition, group.ascent + group.descent);
+					
+				} catch (e:Dynamic) {}
 				
 			}
 			
@@ -568,6 +573,8 @@ class TextField extends InteractiveObject implements IShaderDrawable {
 			
 		}
 		
+		__updateScrollH ();
+		
 		__dirty = true;
 		__layoutDirty = true;
 		__setRenderDirty ();
@@ -579,7 +586,9 @@ class TextField extends InteractiveObject implements IShaderDrawable {
 		
 		__selectionIndex = beginIndex;
 		__caretIndex = endIndex;
-		
+		__stopCursorTimer ();
+		__startCursorTimer ();
+
 	}
 	
 	
@@ -1474,6 +1483,19 @@ class TextField extends InteractiveObject implements IShaderDrawable {
 	}
 	
 	
+	private override function __renderGLMask (renderSession:RenderSession):Void {
+		
+		#if (js && html5)
+		CanvasTextField.render (this, renderSession, __worldTransform);
+		#elseif lime_cairo
+		CairoTextField.render (this, renderSession, __worldTransform);
+		#end
+		
+		super.__renderGLMask (renderSession);
+		
+	}
+	
+	
 	private function __startCursorTimer ():Void {
 		
 		__cursorTimer = Timer.delay (__startCursorTimer, 600);
@@ -1609,6 +1631,30 @@ class TextField extends InteractiveObject implements IShaderDrawable {
 	}
 	
 	
+	private function __updateScrollH ():Void {
+		
+		if (!multiline && type == INPUT) {
+			
+			__layoutDirty = true;
+			__updateLayout ();
+			
+			var offsetX = __textEngine.textWidth - __textEngine.width + 4;
+			
+			if (offsetX > 0) {
+				
+				scrollH = Math.ceil (offsetX);
+				
+			} else {
+				
+				scrollH = 0;
+				
+			}
+			
+		}
+		
+	}
+	
+	
 	private function __updateText (value:String):Void {
 		
 		#if dom
@@ -1646,24 +1692,6 @@ class TextField extends InteractiveObject implements IShaderDrawable {
 			}
 			
 			__textEngine.text = mask;
-			
-		}
-		
-		if (!multiline && type == INPUT) {
-			
-			__updateLayout ();
-			
-			var offsetX = __textEngine.textWidth - __textEngine.width + 4;
-			
-			if (offsetX > 0) {
-				
-				scrollH = Math.ceil (offsetX);
-				
-			} else {
-				
-				scrollH = 0;
-				
-			}
 			
 		}
 		
@@ -2089,6 +2117,7 @@ class TextField extends InteractiveObject implements IShaderDrawable {
 			__dirty = true;
 			__layoutDirty = true;
 			__updateText (__text);
+			__updateScrollH ();
 			__setRenderDirty ();
 			
 		}
@@ -2436,8 +2465,8 @@ class TextField extends InteractiveObject implements IShaderDrawable {
 			
 			__updateLayout ();
 			
-			var position = __getPosition (__scrollMouseX(), __scrollMouseY());
-			
+			var position = __getPosition (mouseX + scrollH, mouseY);
+
 			if (position != __caretIndex) {
 				
 				__caretIndex = position;
@@ -2472,7 +2501,7 @@ class TextField extends InteractiveObject implements IShaderDrawable {
 			var px = __worldTransform.__transformInverseX (x, y);
 			var py = __worldTransform.__transformInverseY (x, y);
 			
-			var upPos:Int = __getPosition (__scrollMouseX(), __scrollMouseY());
+			var upPos:Int = __getPosition (mouseX + scrollH, mouseY);
 			var leftPos:Int;
 			var rightPos:Int;
 			
@@ -2547,9 +2576,17 @@ class TextField extends InteractiveObject implements IShaderDrawable {
 		
 		__stopCursorTimer ();
 		
+		// TODO: Better system
+		
 		if (event.relatedObject == null || !Std.is (event.relatedObject, TextField)) {
 			
 			__stopTextInput ();
+			
+		} else {
+			
+			stage.window.onTextInput.remove (window_onTextInput);
+			stage.window.onKeyDown.remove (window_onKeyDown);
+			__inputEnabled = false;
 			
 		}
 		
@@ -2585,7 +2622,7 @@ class TextField extends InteractiveObject implements IShaderDrawable {
 		
 		__updateLayout ();
 		
-		__caretIndex = __getPosition (__scrollMouseX(), __scrollMouseY());
+		__caretIndex = __getPosition (mouseX + scrollH, mouseY);
 		__selectionIndex = __caretIndex;
 		#if !dom
 		__dirty = true;

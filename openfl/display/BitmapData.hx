@@ -29,6 +29,7 @@ import openfl.Lib;
 import openfl._internal.renderer.canvas.CanvasBlendModeManager;
 import openfl._internal.renderer.canvas.CanvasMaskManager;
 import openfl._internal.renderer.RenderSession;
+import openfl._internal.renderer.opengl.GLMaskManager;
 import openfl._internal.renderer.opengl.GLRenderer;
 import openfl._internal.utils.PerlinNoise;
 import openfl.display3D.textures.TextureBase;
@@ -63,6 +64,7 @@ import openfl._internal.renderer.cairo.CairoMaskManager;
 @:access(lime.graphics.Image)
 @:access(lime.graphics.ImageBuffer)
 @:access(lime.math.Rectangle)
+@:access(openfl._internal.renderer.opengl.GLMaskManager)
 @:access(openfl._internal.renderer.opengl.GLRenderer)
 @:access(openfl.display3D.textures.TextureBase)
 @:access(openfl.display.DisplayObject)
@@ -105,7 +107,9 @@ class BitmapData implements IBitmapDrawable {
 	private var __bufferData:Float32Array;
 	private var __framebuffer:GLFramebuffer;
 	private var __framebufferContext:GLRenderContext;
+	private var __isMask:Bool;
 	private var __isValid:Bool;
+	private var __renderable:Bool;
 	private var __surface:CairoSurface;
 	private var __texture:GLTexture;
 	private var __textureContext:GLRenderContext;
@@ -188,6 +192,7 @@ class BitmapData implements IBitmapDrawable {
 		
 		__worldTransform = new Matrix ();
 		__worldColorTransform = new ColorTransform ();
+		__renderable = true;
 		
 	}
 	
@@ -1703,7 +1708,17 @@ class BitmapData implements IBitmapDrawable {
 			var matrixCache = source.__worldTransform;
 			source.__updateTransforms (matrix);
 			source.__updateChildren (false);
+			
+			var cacheRenderable = source.__renderable;
+			if (source.__isMask) {
+				
+				source.__renderable = true;
+				
+			}
+			
 			source.__renderCanvas (renderSession);
+			source.__renderable = cacheRenderable;
+			
 			source.__updateTransforms (matrixCache);
 			source.__updateChildren (true);
 			
@@ -1784,7 +1799,19 @@ class BitmapData implements IBitmapDrawable {
 			var matrixCache = source.__worldTransform;
 			source.__updateTransforms (matrix);
 			source.__updateChildren (false);
+			
+			// TODO: Force renderable using render session?
+			
+			var cacheRenderable = source.__renderable;
+			if (source.__isMask) {
+				
+				source.__renderable = true;
+				
+			}
+			
 			source.__renderCairo (renderSession);
+			source.__renderable = cacheRenderable;
+			
 			source.__updateTransforms (matrixCache);
 			source.__updateChildren (true);
 			
@@ -2047,6 +2074,28 @@ class BitmapData implements IBitmapDrawable {
 		gl.vertexAttribPointer (shader.data.aPosition.index, 3, gl.FLOAT, false, 6 * Float32Array.BYTES_PER_ELEMENT, 0);
 		gl.vertexAttribPointer (shader.data.aTexCoord.index, 2, gl.FLOAT, false, 6 * Float32Array.BYTES_PER_ELEMENT, 3 * Float32Array.BYTES_PER_ELEMENT);
 		gl.vertexAttribPointer (shader.data.aAlpha.index, 1, gl.FLOAT, false, 6 * Float32Array.BYTES_PER_ELEMENT, 5 * Float32Array.BYTES_PER_ELEMENT);
+		
+		gl.drawArrays (gl.TRIANGLE_STRIP, 0, 4);
+		
+	}
+	
+	
+	private function __renderGLMask (renderSession:RenderSession):Void {
+		
+		var renderer:GLRenderer = cast renderSession.renderer;
+		var gl = renderSession.gl;
+		
+		var shader = GLMaskManager.maskShader;
+		
+		shader.data.uImage0.input = this;
+		shader.data.uImage0.smoothing = renderSession.allowSmoothing && (renderSession.upscaled);
+		shader.data.uMatrix.value = renderer.getMatrix (__worldTransform);
+		
+		renderSession.shaderManager.setShader (shader);
+		
+		gl.bindBuffer (gl.ARRAY_BUFFER, getBuffer (gl, 1, __worldColorTransform));
+		gl.vertexAttribPointer (shader.data.aPosition.index, 3, gl.FLOAT, false, 6 * Float32Array.BYTES_PER_ELEMENT, 0);
+		gl.vertexAttribPointer (shader.data.aTexCoord.index, 2, gl.FLOAT, false, 6 * Float32Array.BYTES_PER_ELEMENT, 3 * Float32Array.BYTES_PER_ELEMENT);
 		
 		gl.drawArrays (gl.TRIANGLE_STRIP, 0, 4);
 		

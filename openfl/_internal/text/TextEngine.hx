@@ -202,7 +202,11 @@ class TextEngine {
 			
 			if (registeredFont.fontName == name || (registeredFont.__fontPath != null && (registeredFont.__fontPath == name || registeredFont.__fontPathWithoutDirectory == name))) {
 				
-				return registeredFont;
+				if (registeredFont.__initialize ()) {
+					
+					return registeredFont;
+					
+				}
 				
 			}
 			
@@ -220,6 +224,33 @@ class TextEngine {
 		#end
 		
 		return null;
+		
+	}
+	
+	
+	private static function findFontVariant (format:TextFormat):Font {
+		
+		var fontName = format.font;
+		var bold = format.bold;
+		var italic = format.italic;
+		
+		var fontNamePrefix = StringTools.replace (StringTools.replace (fontName, " Normal", ""), " Regular", "");
+		
+		if (bold && italic && Font.__fontByName.exists (fontNamePrefix + " Bold Italic")) {
+			
+			return findFont (fontNamePrefix + " Bold Italic");
+			
+		} else if (bold && Font.__fontByName.exists (fontNamePrefix + " Bold")) {
+			
+			return findFont (fontNamePrefix + " Bold");
+			
+		} else if (italic && Font.__fontByName.exists (fontNamePrefix + " Italic")) {
+			
+			return findFont (fontNamePrefix + " Italic");
+			
+		}
+		
+		return findFont (fontName);
 		
 	}
 	
@@ -288,18 +319,59 @@ class TextEngine {
 	
 	public static function getFont (format:TextFormat):String {
 		
-		var font = format.italic ? "italic " : "normal ";
+		var fontName = format.font;
+		var bold = format.bold;
+		var italic = format.italic;
+		
+		if (fontName == null) fontName = "_serif";
+		var fontNamePrefix = StringTools.replace (StringTools.replace (fontName, " Normal", ""), " Regular", "");
+		
+		if (bold && italic && Font.__fontByName.exists (fontNamePrefix + " Bold Italic")) {
+			
+			fontName = fontNamePrefix + " Bold Italic";
+			bold = false;
+			italic = false;
+			
+		} else if (bold && Font.__fontByName.exists (fontNamePrefix + " Bold")) {
+			
+			fontName = fontNamePrefix + " Bold";
+			bold = false;
+			
+		} else if (italic && Font.__fontByName.exists (fontNamePrefix + " Italic")) {
+			
+			fontName = fontNamePrefix + " Italic";
+			italic = false;
+			
+		} else {
+			
+			// Prevent "extra" bold and italic fonts
+			
+			if (bold && (fontName.indexOf (" Bold ") > -1 || StringTools.endsWith (fontName, " Bold"))) {
+				
+				bold = false;
+				
+			}
+			
+			if (italic && (fontName.indexOf (" Italic ") > -1 || StringTools.endsWith (fontName, " Italic"))) {
+				
+				italic = false;
+				
+			}
+			
+		}
+		
+		var font = italic ? "italic " : "normal ";
 		font += "normal ";
-		font += format.bold ? "bold " : "normal ";
+		font += bold ? "bold " : "normal ";
 		font += format.size + "px";
 		font += "/" + (format.leading + format.size + 3) + "px ";
 		
-		font += "" + switch (format.font) {
+		font += "" + switch (fontName) {
 			
 			case "_sans": "sans-serif";
 			case "_serif": "serif";
 			case "_typewriter": "monospace";
-			default: "'" + ~/^[\s'"]+(.*)[\s'"]+$/.replace(format.font, '$1') + "'";
+			default: "'" + ~/^[\s'"]+(.*)[\s'"]+$/.replace (fontName, '$1') + "'";
 			
 		}
 		
@@ -323,7 +395,7 @@ class TextEngine {
 				
 			}
 			
-			instance = findFont (format.font);
+			instance = findFontVariant (format);
 			if (instance != null) return instance;
 			
 			var systemFontDirectory = System.fontsDirectory;
@@ -694,6 +766,8 @@ class TextEngine {
 	private function getLayoutGroups ():Void {
 		
 		layoutGroups.length = 0;
+		
+		if (text == null || text == "") return;
 		
 		var rangeIndex = -1;
 		var formatRange:TextFormatRange = null;
@@ -1553,7 +1627,7 @@ class TextEngine {
 	
 	private function update ():Void {
 		
-		if (text == null || text == "" || textFormatRanges.length == 0) {
+		if (text == null /*|| text == ""*/ || textFormatRanges.length == 0) {
 			
 			lineAscents.length = 0;
 			lineBreaks.length = 0;
