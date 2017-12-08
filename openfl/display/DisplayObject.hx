@@ -16,6 +16,7 @@ import openfl._internal.renderer.opengl.GLBitmap;
 import openfl._internal.renderer.opengl.GLDisplayObject;
 import openfl._internal.renderer.opengl.GLRenderer;
 import openfl._internal.renderer.RenderSession;
+import openfl._internal.Lib;
 import openfl.display.Stage;
 import openfl.errors.TypeError;
 import openfl.events.Event;
@@ -29,7 +30,6 @@ import openfl.geom.Matrix;
 import openfl.geom.Point;
 import openfl.geom.Rectangle;
 import openfl.geom.Transform;
-import openfl.Lib;
 import openfl.Vector;
 
 #if (js && html5)
@@ -138,6 +138,38 @@ class DisplayObject extends EventDispatcher implements IBitmapDrawable #if openf
 	private var __canvas:CanvasElement;
 	private var __context:CanvasRenderingContext2D;
 	private var __style:CSSStyleDeclaration;
+	#end
+	
+	
+	#if openfljs
+	private static function __init__ () {
+		
+		var p = untyped DisplayObject.prototype;
+		untyped Object.defineProperties (p, {
+			"alpha": { get: p.get_alpha, set: p.set_alpha },
+			"blendMode": { get: p.get_blendMode, set: p.set_blendMode },
+			"cacheAsBitmap": { get: p.get_cacheAsBitmap, set: p.set_cacheAsBitmap },
+			"cacheAsBitmapMatrix": { get: p.get_cacheAsBitmapMatrix, set: p.set_cacheAsBitmapMatrix },
+			"filters": { get: p.get_filters, set: p.set_filters },
+			"height": { get: p.get_height, set: p.set_height },
+			"loaderInfo": { get: p.get_loaderInfo },
+			"mask": { get: p.get_mask, set: p.set_mask },
+			"mouseX": { get: p.get_mouseX },
+			"mouseY": { get: p.get_mouseY },
+			"name": { get: p.get_name, set: p.set_name },
+			"root": { get: p.get_root },
+			"rotation": { get: p.get_rotation, set: p.set_rotation },
+			"scaleX": { get: p.get_scaleX, set: p.set_scaleX },
+			"scaleY": { get: p.get_scaleY, set: p.set_scaleY },
+			"scrollRect": { get: p.get_scrollRect, set: p.set_scrollRect },
+			"transform": { get: p.get_transform, set: p.set_transform },
+			"visible": { get: p.get_visible, set: p.set_visible },
+			"width": { get: p.get_width, set: p.set_width },
+			"x": { get: p.get_x, set: p.set_x },
+			"y": { get: p.get_y, set: p.set_y }
+		});
+		
+	}
 	#end
 	
 	
@@ -1040,7 +1072,7 @@ class DisplayObject extends EventDispatcher implements IBitmapDrawable #if openf
 			//if (!renderSession.lockTransform) __getWorldTransform ();
 			__update (false, true);
 			
-			var needRender = (__cacheBitmap == null || (__renderDirty && (force || (__children != null && __children.length > 0))) || opaqueBackground != __cacheBitmapBackground || !__cacheBitmapColorTransform.__equals (__worldColorTransform));
+			var needRender = (__cacheBitmap == null || (__renderDirty && (force || (__children != null && __children.length > 0) || (__graphics!= null && __graphics.__dirty))) || opaqueBackground != __cacheBitmapBackground || !__cacheBitmapColorTransform.__equals (__worldColorTransform));
 			var updateTransform = (needRender || (!__cacheBitmap.__worldTransform.equals (__worldTransform)));
 			var hasFilters = (__filters != null && __filters.length > 0);
 			
@@ -1090,8 +1122,10 @@ class DisplayObject extends EventDispatcher implements IBitmapDrawable #if openf
 						__cacheBitmapData = new BitmapData (bitmapWidth, bitmapHeight, true, color);
 						//__cacheBitmapData.disposeImage ();
 						
+						#if !openfljs
 						if (__cacheBitmap == null) __cacheBitmap = new Bitmap ();
 						__cacheBitmap.bitmapData = __cacheBitmapData;
+						#end
 						
 					} else {
 						

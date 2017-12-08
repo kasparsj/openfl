@@ -25,6 +25,19 @@ class InteractiveObject extends DisplayObject {
 	private var __tabIndex:Int;
 	
 	
+	#if openfljs
+	private static function __init__ () {
+		
+		var p = untyped InteractiveObject.prototype;
+		untyped Object.defineProperties (p, {
+			"tabEnabled": { get: p.get_tabEnabled, set: p.set_tabEnabled },
+			"tabIndex": { get: p.get_tabIndex, set: p.set_tabIndex }
+		});
+		
+	}
+	#end
+	
+	
 	public function new () {
 		
 		super ();
@@ -40,7 +53,7 @@ class InteractiveObject extends DisplayObject {
 	
 	public function requestSoftKeyboard ():Bool {
 		
-		openfl.Lib.notImplemented ();
+		openfl._internal.Lib.notImplemented ();
 		
 		return false;
 		

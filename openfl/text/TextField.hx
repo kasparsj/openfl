@@ -119,10 +119,54 @@ class TextField extends InteractiveObject implements IShaderDrawable {
 	#if (js && html5)
 	private var __div:DivElement;
 	#end
+	
 	#if dom
-		private var __renderedOnCanvasWhileOnDOM:Bool = false;
-		private var __rawHtmlText:String;
-		private var __forceCachedBitmapUpdate:Bool = false;
+	private var __renderedOnCanvasWhileOnDOM:Bool = false;
+	private var __rawHtmlText:String;
+	private var __forceCachedBitmapUpdate:Bool = false;
+	#end
+	
+	
+	#if openfljs
+	private static function __init__ () {
+		
+		var p = untyped TextField.prototype;
+		untyped Object.defineProperties (p, {
+			"antiAliasType": { get: p.get_antiAliasType, set: p.set_antiAliasType },
+			"autoSize": { get: p.get_autoSize, set: p.set_autoSize },
+			"background": { get: p.get_background, set: p.set_background },
+			"backgroundColor": { get: p.get_backgroundColor, set: p.set_backgroundColor },
+			"border": { get: p.get_border, set: p.set_border },
+			"borderColor": { get: p.get_borderColor, set: p.set_borderColor },
+			"bottomScrollV": { get: p.get_bottomScrollV },
+			"defaultTextFormat": { get: p.get_defaultTextFormat, set: p.set_defaultTextFormat },
+			"displayAsPassword": { get: p.get_displayAsPassword, set: p.set_displayAsPassword },
+			"embedFonts": { get: p.get_embedFonts, set: p.set_embedFonts },
+			"gridFitType": { get: p.get_gridFitType, set: p.set_gridFitType },
+			"htmlText": { get: p.get_htmlText, set: p.set_htmlText },
+			"length": { get: p.get_length },
+			"maxChars": { get: p.get_maxChars, set: p.set_maxChars },
+			"maxScrollH": { get: p.get_maxScrollH },
+			"maxScrollV": { get: p.get_maxScrollV },
+			"mouseWheelEnabled": { get: p.get_mouseWheelEnabled, set: p.set_mouseWheelEnabled },
+			"multiline": { get: p.get_multiline, set: p.set_multiline },
+			"numLines": { get: p.get_numLines },
+			"restrict": { get: p.get_restrict, set: p.set_restrict },
+			"scrollH": { get: p.get_scrollH, set: p.set_scrollH },
+			"scrollV": { get: p.get_scrollV, set: p.set_scrollV },
+			"selectable": { get: p.get_selectable, set: p.set_selectable },
+			"selectionBeginIndex": { get: p.get_selectionBeginIndex },
+			"selectionEndIndex": { get: p.get_selectionEndIndex },
+			"sharpness": { get: p.get_sharpness, set: p.set_sharpness },
+			"text": { get: p.get_text, set: p.set_text },
+			"textColor": { get: p.get_textColor, set: p.set_textColor },
+			"textHeight": { get: p.get_textHeight },
+			"textWidth": { get: p.get_textWidth },
+			"type": { get: p.get_type, set: p.set_type },
+			"wordWrap": { get: p.get_wordWrap, set: p.set_wordWrap }
+		});
+		
+	}
 	#end
 	
 	
@@ -142,7 +186,7 @@ class TextField extends InteractiveObject implements IShaderDrawable {
 		
 		if (__defaultTextFormat == null) {
 			
-			__defaultTextFormat = new TextFormat ("Times New Roman", 12, 0x000000, false, false, false, "", "", TextFormatAlign.LEFT, 0, 0, 0, 0);
+			__defaultTextFormat = new TextFormat ("Times New Roman", 12, 0x000000, false, false, false, null, "", TextFormatAlign.LEFT, 0, 0, 0, 0);
 			__defaultTextFormat.blockIndent = 0;
 			__defaultTextFormat.bullet = false;
 			__defaultTextFormat.letterSpacing = 0;
@@ -622,15 +666,11 @@ class TextField extends InteractiveObject implements IShaderDrawable {
 			
 			__textFormat.__merge (format);
 			
-			if (__textEngine.textFormatRanges.length > 1) {
-				
-				__textEngine.textFormatRanges.splice (1, __textEngine.textFormatRanges.length - 1);
-				
-				range = __textEngine.textFormatRanges[0];
-				range.format = __textFormat;
-				range.start = 0;
-				range.end = max;
-				
+			for (i in 0...__textEngine.textFormatRanges.length) {
+
+				range = __textEngine.textFormatRanges[i];
+				range.format.__merge (__textFormat);
+
 			}
 			
 		} else {

@@ -25,7 +25,7 @@ import lime.math.Rectangle in LimeRectangle;
 import lime.math.Vector2;
 import lime.utils.Float32Array;
 import lime.utils.UInt8Array;
-import openfl.Lib;
+// import openfl.Lib;
 import openfl._internal.renderer.canvas.CanvasBlendModeManager;
 import openfl._internal.renderer.canvas.CanvasMaskManager;
 import openfl._internal.renderer.RenderSession;
@@ -58,6 +58,11 @@ import js.Browser;
 import openfl._internal.renderer.cairo.CairoBlendModeManager;
 import openfl._internal.renderer.cairo.CairoRenderer;
 import openfl._internal.renderer.cairo.CairoMaskManager;
+#end
+
+#if gl_stats
+import openfl._internal.renderer.opengl.stats.GLStats;
+import openfl._internal.renderer.opengl.stats.DrawCallContext;
 #end
 
 @:access(lime.graphics.opengl.GL)
@@ -115,6 +120,7 @@ class BitmapData implements IBitmapDrawable {
 	private var __textureContext:GLRenderContext;
 	private var __textureVersion:Int;
 	private var __transform:Matrix;
+	private var __worldAlpha:Float;
 	private var __worldColorTransform:ColorTransform;
 	private var __worldTransform:Matrix;
 	
@@ -491,11 +497,11 @@ class BitmapData implements IBitmapDrawable {
 				gl.bindFramebuffer (gl.FRAMEBUFFER, __getFramebuffer (gl));
 				gl.viewport (0, 0, width, height);
 				
-				var renderer = new GLRenderer (Lib.current.stage, gl, this);
+				var renderer = new GLRenderer (null, gl, this);
 				
 				var renderSession = renderer.renderSession;
 				renderSession.clearRenderDirty = false;
-				renderSession.shaderManager = cast(Lib.current.stage.__renderer, GLRenderer).renderSession.shaderManager;
+				renderSession.shaderManager = cast (null, GLRenderer).renderSession.shaderManager;
 				
 				var matrixCache = source.__worldTransform;
 				source.__updateTransforms (matrix);
@@ -1254,11 +1260,13 @@ class BitmapData implements IBitmapDrawable {
 		
 		if (!readable) return false;
 		
+		#if !openfljs
 		if (Std.is (secondObject, Bitmap)) {
 			
 			secondObject = cast (secondObject, Bitmap).bitmapData;
 			
 		}
+		#end
 		
 		if (Std.is (secondObject, Point)) {
 			
@@ -1636,11 +1644,11 @@ class BitmapData implements IBitmapDrawable {
 				gl.bindFramebuffer (gl.FRAMEBUFFER, __getFramebuffer (gl));
 				gl.viewport (0, 0, width, height);
 				
-				var renderer = new GLRenderer (Lib.current.stage, gl, this);
+				var renderer = new GLRenderer (null, gl, this);
 				
 				var renderSession = renderer.renderSession;
 				renderSession.clearRenderDirty = true;
-				renderSession.shaderManager = cast (Lib.current.stage.__renderer, GLRenderer).renderSession.shaderManager;
+				renderSession.shaderManager = cast (null, GLRenderer).renderSession.shaderManager;
 				
 				var matrixCache = source.__worldTransform;
 				source.__updateTransforms (matrix);
@@ -1716,8 +1724,12 @@ class BitmapData implements IBitmapDrawable {
 				
 			}
 			
+			var cacheAlpha = source.__worldAlpha;
+ 			source.__worldAlpha = 1;
+ 			
 			source.__renderCanvas (renderSession);
 			source.__renderable = cacheRenderable;
+			source.__worldAlpha = cacheAlpha;
 			
 			source.__updateTransforms (matrixCache);
 			source.__updateChildren (true);
@@ -1809,8 +1821,12 @@ class BitmapData implements IBitmapDrawable {
 				
 			}
 			
+			var cacheAlpha = source.__worldAlpha;
+ 			source.__worldAlpha = 1;
+ 			
 			source.__renderCairo (renderSession);
 			source.__renderable = cacheRenderable;
+			source.__worldAlpha = cacheAlpha;
 			
 			source.__updateTransforms (matrixCache);
 			source.__updateChildren (true);
@@ -2077,6 +2093,10 @@ class BitmapData implements IBitmapDrawable {
 		
 		gl.drawArrays (gl.TRIANGLE_STRIP, 0, 4);
 		
+		#if gl_stats
+			GLStats.incrementDrawCall (DrawCallContext.STAGE);
+		#end
+		
 	}
 	
 	
@@ -2098,6 +2118,10 @@ class BitmapData implements IBitmapDrawable {
 		gl.vertexAttribPointer (shader.data.aTexCoord.index, 2, gl.FLOAT, false, 6 * Float32Array.BYTES_PER_ELEMENT, 3 * Float32Array.BYTES_PER_ELEMENT);
 		
 		gl.drawArrays (gl.TRIANGLE_STRIP, 0, 4);
+		
+		#if gl_stats
+			GLStats.incrementDrawCall (DrawCallContext.STAGE);
+		#end
 		
 	}
 	
