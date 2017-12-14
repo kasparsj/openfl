@@ -183,7 +183,7 @@ class TextField extends InteractiveObject implements IShaderDrawable {
 		
 		if (__defaultTextFormat == null) {
 			
-			__defaultTextFormat = new TextFormat ("Times New Roman", 12, 0x000000, false, false, false, "", "", TextFormatAlign.LEFT, 0, 0, 0, 0);
+			__defaultTextFormat = new TextFormat ("Times New Roman", 12, 0x000000, null, null, null, "", "", TextFormatAlign.LEFT, 0, 0, 0, 0);
 			__defaultTextFormat.blockIndent = 0;
 			__defaultTextFormat.bullet = false;
 			__defaultTextFormat.letterSpacing = 0;
@@ -1215,7 +1215,7 @@ class TextField extends InteractiveObject implements IShaderDrawable {
 		
 		var group = __getGroup (mouseX, mouseY, true);
 		
-		if (group != null && group.format.url != "") {
+		if (group != null && group.format.url != null && group.format.url != "") {
 			
 			return POINTER;
 			
