@@ -37,7 +37,9 @@ import openfl._internal.renderer.dom.DOMRenderer;
 import openfl._internal.renderer.opengl.GLRenderer;
 import openfl._internal.renderer.RenderSession;
 import openfl._internal.TouchData;
+import openfl.display.Application in OpenFLApplication;
 import openfl.display.DisplayObjectContainer;
+import openfl.display.Window in OpenFLWindow;
 import openfl.errors.Error;
 import openfl.events.Event;
 import openfl.events.EventPhase;
@@ -72,6 +74,8 @@ import js.html.CanvasElement;
 import js.html.DivElement;
 import js.html.Element;
 import js.Browser;
+#elseif js
+typedef Element = Dynamic;
 #end
 
 #if !openfl_debug
@@ -80,6 +84,7 @@ import js.Browser;
 #end
 
 @:access(openfl._internal.renderer.AbstractRenderer)
+@:access(openfl.display.LoaderInfo)
 @:access(openfl.display.Sprite)
 @:access(openfl.display.Stage3D)
 @:access(openfl.events.Event)
@@ -96,9 +101,14 @@ class Stage extends DisplayObjectContainer implements IModule {
 	public var allowsFullScreen (default, null):Bool;
 	public var allowsFullScreenInteractive (default, null):Bool;
 	public var application (default, null):Application;
-	public var color (get, set):Int;
+	public var color (get, set):Null<Int>;
 	public var contentsScaleFactor (get, never):Float;
 	public var displayState (get, set):StageDisplayState;
+	
+	#if commonjs
+	public var element:Element;
+	#end
+	
 	public var focus (get, set):InteractiveObject;
 	public var frameRate (get, set):Float;
 	public var fullScreenHeight (get, never):UInt;
@@ -167,7 +177,7 @@ class Stage extends DisplayObjectContainer implements IModule {
 	}
 	#end
 	
-	public function new (window:Window, color:Null<Int> = null) {
+	public function new (#if commonjs width:Dynamic = 0, height:Dynamic = 0, color:Null<Int> = null, documentClass:Class<Dynamic> = null, windowConfig:Dynamic = null #else window:Window, color:Null<Int> = null #end) {
 		
 		#if hxtelemetry
 		Telemetry.__initialize ();
@@ -175,19 +185,77 @@ class Stage extends DisplayObjectContainer implements IModule {
 		
 		super ();
 		
-		this.application = window.application;
-		this.window = window;
+		#if commonjs
 		
-		if (color == null) {
+		if (!Math.isNaN (width)) {
 			
-			__transparent = true;
-			this.color = 0x000000;
+			// if (Lib.current == null) Lib.current = new MovieClip ();
+			
+			if (Lib.current.__loaderInfo == null) {
+				
+				Lib.current.__loaderInfo = LoaderInfo.create (null);
+				Lib.current.__loaderInfo.content = Lib.current;
+				
+			}
+			
+			var resizable = (width == 0 && width == 0);
+			
+			#if (js && html5)
+			element = Browser.document.createElement ("div");
+			
+			if (resizable) {
+				
+				element.style.width = "100%";
+				element.style.height = "100%";
+				
+			}
+			#else
+			element = null;
+			#end
+			
+			if (windowConfig == null) windowConfig = {};
+			windowConfig.width = width;
+			windowConfig.height = height;
+			windowConfig.element = element;
+			windowConfig.resizable = resizable;
+			if (!Reflect.hasField (windowConfig, "stencilBuffer")) windowConfig.stencilBuffer = true;
+			if (!Reflect.hasField (windowConfig, "background")) windowConfig.background = null;
+			
+			window = new Window (windowConfig);
+			window.stage = this;
+			
+			// if (Application.current == null) {
+				
+				var app = new Application ();
+				app.create ({});
+				app.createWindow (window);
+				app.exec ();
+				
+			// } else {
+				
+			// 	var app = Application.current;
+			// 	app.createWindow (window);
+			// 	app.addModule (this);
+				
+			// }
+			
+			// this.color = 0xFFFFFF;
+			this.color = color;
 			
 		} else {
 			
-			this.color = color;
+			this.window = cast width;
+			this.color = height;
 			
 		}
+		
+		#else
+		
+		this.application = window.application;
+		this.window = window;
+		this.color = color;
+		
+		#end
 		
 		this.name = null;
 		
@@ -240,6 +308,24 @@ class Stage extends DisplayObjectContainer implements IModule {
 			stage.addChild (Lib.current);
 			
 		}
+		
+		#if commonjs
+		if (!window.config.resizable) {
+			
+			__setLogicalSize (window.config.width, window.config.height);
+			
+		}
+		
+		if (documentClass != null) {
+			
+			DisplayObject.__initStage = this;
+			var sprite:Sprite = cast Type.createInstance (documentClass, []);
+			addChild (sprite);
+			
+		}
+		
+		Application.current.addModule (this);
+		#end
 		
 	}
 	
@@ -1126,9 +1212,7 @@ class Stage extends DisplayObjectContainer implements IModule {
 			
 			case DOM (element):
 				
-				#if dom
 				__renderer = new DOMRenderer (this, element);
-				#end
 			
 			case CAIRO (cairo):
 				
@@ -1922,15 +2006,20 @@ class Stage extends DisplayObjectContainer implements IModule {
 				
 				if (updateChildren) {
 					
-					#if dom
-					__wasDirty = true;
-					#end
+					// #if dom
+					if (DisplayObject.__supportDOM) {
+						
+						__wasDirty = true;
+						
+					}
+					
+					// #end
 					
 					//__dirty = false;
 					
 				}
 				
-			} #if dom else if (__wasDirty) {
+			} /*#if dom*/ else if (__wasDirty) {
 				
 				// If we were dirty last time, we need at least one more
 				// update in order to clear "changed" properties
@@ -1943,7 +2032,7 @@ class Stage extends DisplayObjectContainer implements IModule {
 					
 				}
 				
-			} #end
+			} /*#end*/
 			
 		}
 		
@@ -1957,14 +2046,25 @@ class Stage extends DisplayObjectContainer implements IModule {
 	
 	
 	
-	private function get_color ():Int {
+	private function get_color ():Null<Int> {
 		
 		return __color;
 		
 	}
 	
 	
-	private function set_color (value:Int):Int {
+	private function set_color (value:Null<Int>):Null<Int> {
+		
+		if (value == null) {
+			
+			__transparent = true;
+			value = 0x000000;
+			
+		} else {
+			
+			__transparent = false;
+			
+		}
 		
 		var r = (value & 0xFF0000) >>> 16;
 		var g = (value & 0x00FF00) >>> 8;

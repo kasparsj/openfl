@@ -33,7 +33,6 @@ class DOMRenderer extends AbstractRenderer {
 		
 		super (stage);
 		
-		#if dom
 		this.element = element;
 		
 		renderSession = new RenderSession ();
@@ -42,6 +41,8 @@ class DOMRenderer extends AbstractRenderer {
 		//renderSession.roundPixels = true;
 		
 		#if (js && html5)
+		DisplayObject.__supportDOM = true;
+		
 		var config = stage.window.config;
 		
 		if (config != null && Reflect.hasField (config, "allowHighDPI") && config.allowHighDPI) {
@@ -75,7 +76,7 @@ class DOMRenderer extends AbstractRenderer {
 		renderSession.blendModeManager = new DOMBlendModeManager (renderSession);
 		
 		renderSession.renderer = this;
-		#end
+		renderSession.renderType = DOM;
 		
 	}
 	

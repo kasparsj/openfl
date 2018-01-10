@@ -69,7 +69,9 @@ class Bitmap extends DisplayObject implements IShaderDrawable {
 	
 	private override function __enterFrame (deltaTime:Int):Void {
 		
-		#if (!js || !dom)
+		// TODO: Do not set as dirty for DOM render
+		
+		// #if (!js || !dom)
 		if (__bitmapData != null && __bitmapData.image != null) {
 			
 			var image = __bitmapData.image;
@@ -79,7 +81,7 @@ class Bitmap extends DisplayObject implements IShaderDrawable {
 			}
 			
 		}
-		#end
+		// #end
 		
 	}
 	
@@ -206,7 +208,6 @@ class Bitmap extends DisplayObject implements IShaderDrawable {
 	
 	private override function __renderDOM (renderSession:RenderSession):Void {
 		
-		#if dom
 		__updateCacheBitmap (renderSession, !__worldColorTransform.__isDefault ());
 		
 		if (__cacheBitmap != null && !__cacheBitmapRender) {
@@ -221,16 +222,13 @@ class Bitmap extends DisplayObject implements IShaderDrawable {
 			DOMBitmap.render (this, renderSession);
 			
 		}
-		#end
 		
 	}
 	
 	
 	private override function __renderDOMClear (renderSession: RenderSession):Void {
 		
-		#if dom
 		DOMBitmap.clear (this, renderSession);
-		#end
 		
 	}
 	

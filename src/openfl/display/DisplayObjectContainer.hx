@@ -6,6 +6,7 @@ import openfl._internal.renderer.cairo.CairoRenderer;
 import openfl._internal.renderer.canvas.CanvasGraphics;
 import openfl._internal.renderer.RenderSession;
 import openfl.display.Stage;
+import openfl.errors.ArgumentError;
 import openfl.errors.RangeError;
 import openfl.errors.TypeError;
 import openfl.events.Event;
@@ -74,7 +75,13 @@ class DisplayObjectContainer extends InteractiveObject {
 			error.errorID = 2007;
 			throw error;
 			
-		}
+		} #if ((haxe_ver >= "3.4.0") || !cpp) else if (child.stage == child) {
+			
+			var error = new ArgumentError ("Error #3783: A Stage object cannot be added as the child of another object.");
+			error.errorID = 3783;
+			throw error;
+			
+		} #end
 		
 		if (index > __children.length || index < 0) {
 			
@@ -550,7 +557,7 @@ class DisplayObjectContainer extends InteractiveObject {
 							
 							hitTest = true;
 							
-							if (interactive) {
+							if (interactive && stack.length > length) {
 								
 								break;
 								
@@ -768,8 +775,6 @@ class DisplayObjectContainer extends InteractiveObject {
 	
 	private override function __renderDOM (renderSession:RenderSession):Void {
 		
-		#if dom
-		
 		super.__renderDOM (renderSession);
 		
 		if (__cacheBitmap != null && !__cacheBitmapRender) return;
@@ -811,14 +816,11 @@ class DisplayObjectContainer extends InteractiveObject {
 		
 		renderSession.maskManager.popObject (this);
 		
-		#end
-		
 	}
 	
 	
 	private override function __renderDOMClear (renderSession:RenderSession):Void {
 		
-		#if dom
 		for (child in __children) {
 			child.__renderDOMClear (renderSession);
 		}
@@ -828,7 +830,6 @@ class DisplayObjectContainer extends InteractiveObject {
 				orphan.__renderDOMClear (renderSession);
 			}
 		}
-		#end
 		
 	}
 	

@@ -118,9 +118,6 @@ class TextField extends InteractiveObject implements IShaderDrawable {
 	
 	#if (js && html5)
 	private var __div:DivElement;
-	#end
-	
-	#if dom
 	private var __renderedOnCanvasWhileOnDOM:Bool = false;
 	private var __rawHtmlText:String;
 	private var __forceCachedBitmapUpdate:Bool = false;
@@ -1402,10 +1399,11 @@ class TextField extends InteractiveObject implements IShaderDrawable {
 	
 	private override function __renderCanvas (renderSession:RenderSession):Void {
 		
+		#if (js && html5)
+		
 		// TODO: Better DOM workaround on cacheAsBitmap
 		
-		#if (js && html5 && dom)
-		if (!__renderedOnCanvasWhileOnDOM) {
+		if (renderSession.renderType == DOM && !__renderedOnCanvasWhileOnDOM) {
 			
 			__renderedOnCanvasWhileOnDOM = true;
 			
@@ -1426,7 +1424,6 @@ class TextField extends InteractiveObject implements IShaderDrawable {
 			__setRenderDirty ();
 			
 		}
-		#end
 		
 		CanvasTextField.render (this, renderSession, __worldTransform);
 		
@@ -1460,12 +1457,15 @@ class TextField extends InteractiveObject implements IShaderDrawable {
 			
 		}
 		
+		#end
+		
 	}
 	
 	
 	private override function __renderDOM (renderSession:RenderSession):Void {
 		
-		#if dom
+		#if (js && html5)
+		
 		__updateCacheBitmap (renderSession, __forceCachedBitmapUpdate || !__worldColorTransform.__isDefault ());
 		__forceCachedBitmapUpdate = false;
 		if (__cacheBitmap != null && !__cacheBitmapRender) {
@@ -1495,6 +1495,7 @@ class TextField extends InteractiveObject implements IShaderDrawable {
 			DOMTextField.render (this, renderSession);
 			
 		}
+		
 		#end
 		
 	}
@@ -1502,9 +1503,7 @@ class TextField extends InteractiveObject implements IShaderDrawable {
 	
 	private override function __renderDOMClear (renderSession:RenderSession):Void {
 		
-		#if dom
 		DOMTextField.clear (this, renderSession);
-		#end
 		
 	}
 	
@@ -1554,7 +1553,7 @@ class TextField extends InteractiveObject implements IShaderDrawable {
 			
 		}
 		
-		var enableInput = #if dom __renderedOnCanvasWhileOnDOM #else true #end;
+		var enableInput = #if (js && html5) (DisplayObject.__supportDOM ? __renderedOnCanvasWhileOnDOM : true) #else true #end;
 		
 		if (enableInput) {
 			
@@ -1587,7 +1586,7 @@ class TextField extends InteractiveObject implements IShaderDrawable {
 	
 	private function __stopTextInput ():Void {
 		
-		var disableInput: Bool = #if dom __renderedOnCanvasWhileOnDOM #else true #end;
+		var disableInput = #if (js && html5) (DisplayObject.__supportDOM ? __renderedOnCanvasWhileOnDOM : true) #else true #end;
 		
 		if (disableInput) {
 			
@@ -1696,8 +1695,8 @@ class TextField extends InteractiveObject implements IShaderDrawable {
 	
 	private function __updateText (value:String):Void {
 		
-		#if dom
-		if (__renderedOnCanvasWhileOnDOM) {
+		#if (js && html5)
+		if (DisplayObject.__supportDOM && __renderedOnCanvasWhileOnDOM) {
 			
 			__forceCachedBitmapUpdate = __text != value;
 			
@@ -1715,7 +1714,7 @@ class TextField extends InteractiveObject implements IShaderDrawable {
 			
 		}
 		
-		if (!__displayAsPassword #if (js && html5 && dom) || !__renderedOnCanvasWhileOnDOM #end) {
+		if (!__displayAsPassword #if (js && html5) || (DisplayObject.__supportDOM && !__renderedOnCanvasWhileOnDOM) #end) {
 			
 			__textEngine.text = __text;
 			
@@ -2035,33 +2034,45 @@ class TextField extends InteractiveObject implements IShaderDrawable {
 		
 		__isHTML = true;
 		
-		#if (js && html5 && dom)
-		__rawHtmlText = value;
+		#if (js && html5)
+		if (DisplayObject.__supportDOM) {
+			
+			__rawHtmlText = value;
+			
+		}
 		#end
 		
 		value = HTMLParser.parse(value, __textFormat, __textEngine.textFormatRanges);
 		
-		#if (js && html5 && dom)
+		#if (js && html5)
 		
-		if (__textEngine.textFormatRanges.length > 1) {
+		if (DisplayObject.__supportDOM) {
 			
-			__textEngine.textFormatRanges.splice (1, __textEngine.textFormatRanges.length - 1);
+			if (__textEngine.textFormatRanges.length > 1) {
+				
+				__textEngine.textFormatRanges.splice (1, __textEngine.textFormatRanges.length - 1);
+				
+			}
 			
-		}
-		
-		var range = __textEngine.textFormatRanges[0];
-		range.format = __textFormat;
-		range.start = 0;
-		
-		if (__renderedOnCanvasWhileOnDOM) {
+			var range = __textEngine.textFormatRanges[0];
+			range.format = __textFormat;
+			range.start = 0;
 			
-			range.end = value.length;
-			__updateText (value);
+			if (__renderedOnCanvasWhileOnDOM) {
+				
+				range.end = value.length;
+				__updateText (value);
+				
+			} else {
+				
+				range.end = __rawHtmlText.length;
+				__updateText (__rawHtmlText);
+				
+			}
 			
 		} else {
 			
-			range.end = __rawHtmlText.length;
-			__updateText (__rawHtmlText);
+			__updateText (value);
 			
 		}
 		#else
@@ -2509,14 +2520,19 @@ class TextField extends InteractiveObject implements IShaderDrawable {
 			if (position != __caretIndex) {
 				
 				__caretIndex = position;
-				#if !dom
-				__dirty = true;
-				__setRenderDirty ();
-				#else
-				if (__renderedOnCanvasWhileOnDOM) {
-					__forceCachedBitmapUpdate = true;
+				
+				#if (js && html5) if (DisplayObject.__supportDOM) {
+					
+					if (__renderedOnCanvasWhileOnDOM) {
+						__forceCachedBitmapUpdate = true;
+					}
+					
+				} else #end {
+					
+					__dirty = true;
+					__setRenderDirty ();
+					
 				}
-				#end
 				
 			}
 			
@@ -2557,8 +2573,8 @@ class TextField extends InteractiveObject implements IShaderDrawable {
 				__stopCursorTimer ();
 				__startCursorTimer ();
 				
-				#if dom
-				if (__renderedOnCanvasWhileOnDOM) {
+				#if (js && html5)
+				if (DisplayObject.__supportDOM && __renderedOnCanvasWhileOnDOM) {
 					__forceCachedBitmapUpdate = true;
 				}
 				#end
@@ -2663,10 +2679,13 @@ class TextField extends InteractiveObject implements IShaderDrawable {
 		
 		__caretIndex = __getPosition (mouseX + scrollH, mouseY);
 		__selectionIndex = __caretIndex;
-		#if !dom
-		__dirty = true;
-		__setRenderDirty ();
-		#end
+		
+		if (!DisplayObject.__supportDOM) {
+			
+			__dirty = true;
+			__setRenderDirty ();
+			
+		}
 		
 		stage.addEventListener (MouseEvent.MOUSE_MOVE, stage_onMouseMove);
 		stage.addEventListener (MouseEvent.MOUSE_UP, stage_onMouseUp);
