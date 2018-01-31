@@ -2618,7 +2618,7 @@ class TextField extends InteractiveObject implements IShaderDrawable {
 	
 	private function this_onFocusIn (event:FocusEvent):Void {
 		
-		if (selectable && type == INPUT && stage != null && stage.focus == this) {
+		if (type == INPUT && stage != null && stage.focus == this) {
 			
 			__startTextInput ();
 			
@@ -2673,8 +2673,8 @@ class TextField extends InteractiveObject implements IShaderDrawable {
 	
 	private function this_onMouseDown (event:MouseEvent):Void {
 		
-		if (!selectable || (__touchPoints != null && Lambda.count(__touchPoints) > 0)) return;
-		
+		if ((!selectable && type != INPUT) || (__touchPoints != null && Lambda.count(__touchPoints) > 0)) return;
+
 		__updateLayout ();
 		
 		__caretIndex = __getPosition (mouseX + scrollH, mouseY);

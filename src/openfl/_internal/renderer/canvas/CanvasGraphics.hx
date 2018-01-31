@@ -67,8 +67,12 @@ class CanvasGraphics {
 	#if (js && html5)
 	private static function __init__ ():Void {
 		
-		hitTestCanvas = cast Browser.document.createElement ("canvas");
-		hitTestContext = hitTestCanvas.getContext ("2d");
+		if (Browser.supported) {
+			
+			hitTestCanvas = cast Browser.document.createElement ("canvas");
+			hitTestContext = hitTestCanvas.getContext ("2d");
+			
+		}
 		
 	}
 	#end
@@ -1162,6 +1166,8 @@ class CanvasGraphics {
 					
 					if (canvas.width == scaledWidth && canvas.height == scaledHeight) {
 						
+						context.closePath ();
+						context.resetTransform ();
 						context.clearRect (0, 0, scaledWidth, scaledHeight);
 						
 					} else {
@@ -1171,9 +1177,9 @@ class CanvasGraphics {
 						
 					}
 					
+					context.setTransform (transform.a, transform.b, transform.c, transform.d, transform.tx, transform.ty);
+					
 				}
-				
-				context.setTransform (transform.a, transform.b, transform.c, transform.d, transform.tx, transform.ty);
 				
 				fillCommands.clear ();
 				strokeCommands.clear ();

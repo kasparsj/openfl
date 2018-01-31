@@ -1,6 +1,6 @@
 {
   "name": "openfl",
-  "version": "7.0.0-beta.8",
+  "version": "7.0.0",
   "description": "A fast, productive library for 2D cross-platform development.",
   "keywords": [
     "openfl",
@@ -29,6 +29,7 @@
   "files": [
     "bin",
     "dist",
+    "docs",
     "lib",
     "scripts",
     "src"
@@ -38,14 +39,18 @@
     "url": "https://github.com/openfl/openfl.git"
   },
   "scripts": {
-    "build": "npm run build-lib && npm run build-dist && npm run build-tools",
-    "build-dist": "webpack --config webpack.dev.js && webpack --config webpack.prod.js",
+    "build": "npm run build-lib && npm run build-dist && npm run build-tools && npm run build-docs",
+    "build-dist": "npm run build-dist:dev && npm run build-dist:prod",
+    "build-dist:dev": "webpack --config webpack.dev.js",
+    "build-dist:prod": "webpack --config webpack.prod.js",
+    "build-docs": "typedoc --out docs scripts/importAll.ts --allowJs --entryPoint openfl --mode file --target es5 --module commonjs --plugins none --exclude \"**/{node_modules,test}/**/*.ts\" --readme none --theme default --includeDeclarations --disableOutputCheck --ignoreCompilerErrors",
     "build-lib": "cd scripts && haxe build.hxml",
     "build-tools": "cd scripts && haxe tools-npm.hxml",
     "build-test-es5": "cd test/es5 && webpack",
     "build-test-es6": "cd test/es6 && webpack",
     "build-test-haxe": "cd test/haxe && haxe build.hxml && webpack",
     "build-test-typescript": "cd test/typescript && tsc -p tsconfig.json && webpack",
+    "dev-link": "npm link lime && npm link hxgenjs && npm link hxnodejs && npm link format",
     "prepublishOnly": "npm run build",
     "serve": "http-server -c-1 --cors",
     "test": "npm run build-test-es5 && npm run build-test-es6 && npm run build-test-haxe && npm run build-test-typescript && mocha-chrome test/index.html --old-and-busted",
@@ -66,7 +71,7 @@
     "docker-test-haxe": "cd scripts && node docker-run.js openfl/ci-openfl-js:0.0.2 \"npm run test-haxe -s\"",
     "docker-test-typescript": "cd scripts && node docker-run.js openfl/ci-openfl-js:0.0.2 \"npm run test-typescript -s\"",
     "start": "npm run watch",
-    "watch": "watch 'echo \"watch: Compiling...\" && npm run build-lib -s && echo \"watch: Compiled successfully.\"' ./src ./scripts ./node_modules/lime/lime"
+    "watch": "watch \"echo watch: Compiling... && npm run build-lib -s && echo watch: Compiled successfully.\" ./src ./scripts ./node_modules/lime/lime"
   },
   "config": {
     "haxe": "3.4.4",
@@ -85,6 +90,7 @@
     "lime": "openfl/lime#develop",
     "mocha": "^4.0.1",
     "mocha-chrome": "^1.0.2",
+    "typedoc": "^0.9.0",
     "typescript": "^2.6.2",
     "uglifyjs-webpack-plugin": "^1.1.6",
     "watch": "^1.0.2",
