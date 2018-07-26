@@ -583,6 +583,7 @@ class TextField extends InteractiveObject {
 	 */
 	public var wordWrap (get, set):Bool;
 
+	
 	@:noCompletion private var __bounds:Rectangle;
 	@:noCompletion private var __caretIndex:Int;
 	@:noCompletion private var __cursorTimer:Timer;
