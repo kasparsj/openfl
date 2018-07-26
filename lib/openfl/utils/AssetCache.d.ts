@@ -7,10 +7,13 @@ import Font from "./../text/Font";
 declare namespace openfl.utils {
 	
 	
-	/*@:dox(hide)*/ export class AssetCache implements IAssetCache {
+	/*@:dox(hide)*/ export class AssetCache extends IAssetCache {
 	
 	
 		public enabled:boolean;
+		
+		protected get_enabled ():boolean;
+		protected set_enabled (value:boolean):boolean;
 		
 		public constructor ();
 		
@@ -28,8 +31,8 @@ declare namespace openfl.utils {
 		public setFont (id:string, font:Font):void;
 		public setSound (id:string, sound:Sound):void;
 		
-		private get_enabled ():boolean;
-		private set_enabled (value:boolean):boolean;
+		protected get_enabled ():boolean;
+		protected set_enabled (value:boolean):boolean;
 		
 		
 	}

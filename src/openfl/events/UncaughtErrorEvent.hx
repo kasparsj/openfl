@@ -1,4 +1,10 @@
-package openfl.events;
+package openfl.events; #if !flash
+
+
+#if !openfl_debug
+@:fileXml('tags="haxe,release"')
+@:noDebug
+#end
 
 
 class UncaughtErrorEvent extends ErrorEvent {
@@ -37,3 +43,8 @@ class UncaughtErrorEvent extends ErrorEvent {
 	
 	
 }
+
+
+#else
+typedef UncaughtErrorEvent = flash.events.UncaughtErrorEvent;
+#end

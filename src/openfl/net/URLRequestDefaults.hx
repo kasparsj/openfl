@@ -1,4 +1,10 @@
-package openfl.net;
+package openfl.net; #if !flash
+
+
+#if !openfl_debug
+@:fileXml('tags="haxe,release"')
+@:noDebug
+#end
 
 
 class URLRequestDefaults {
@@ -22,3 +28,8 @@ class URLRequestDefaults {
 	
 	
 }
+
+
+#else
+typedef URLRequestDefaults = flash.net.URLRequestDefaults;
+#end

@@ -1,7 +1,12 @@
-package openfl.events;
+package openfl.events; #if !flash
 
 
 import openfl.display.InteractiveObject;
+
+#if !openfl_debug
+@:fileXml('tags="haxe,release"')
+@:noDebug
+#end
 
 
 class ContextMenuEvent extends Event {
@@ -11,6 +16,7 @@ class ContextMenuEvent extends Event {
 	public static inline var MENU_SELECT = "menuSelect";
 	
 	public var contextMenuOwner:InteractiveObject;
+	// @:noCompletion @:dox(hide) @:require(flash10) public var isMouseTargetInaccessible:Bool;
 	public var mouseTarget:InteractiveObject;
 	
 	
@@ -43,3 +49,8 @@ class ContextMenuEvent extends Event {
 	
 	
 }
+
+
+#else
+typedef ContextMenuEvent = flash.events.ContextMenuEvent;
+#end

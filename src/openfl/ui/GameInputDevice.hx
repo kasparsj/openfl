@@ -1,8 +1,13 @@
-package openfl.ui;
+package openfl.ui; #if !flash
 
 
 import lime.ui.Gamepad;
 import openfl.utils.ByteArray;
+
+#if !openfl_debug
+@:fileXml('tags="haxe,release"')
+@:noDebug
+#end
 
 @:access(openfl.ui.GameInputControl)
 
@@ -12,20 +17,41 @@ import openfl.utils.ByteArray;
 	
 	public static var MAX_BUFFER_SIZE = 32000;
 	
+	
+	/**
+	 * Enables or disables this device.
+	 */
 	public var enabled:Bool;
+	
+	/**
+	 * Returns the ID of this device.
+	 */
 	public var id (default, null):String;
+	
+	/**
+	 * Returns the name of this device.
+	 */
 	public var name (default, null):String;
+	
+	/**
+	 * Returns the number of controls on this device.
+	 */
 	public var numControls (get, never):Int;
+	
+	/**
+	 * Specifies the rate (in milliseconds) at which to retrieve control values.
+	 */
 	public var sampleInterval:Int;
 	
-	private var __axis = new Map<Int, GameInputControl> ();
-	private var __button = new Map<Int, GameInputControl> ();
-	private var __controls = new Array<GameInputControl> ();
-	private var __gamepad:Gamepad;
+	
+	@:noCompletion private var __axis = new Map<Int, GameInputControl> ();
+	@:noCompletion private var __button = new Map<Int, GameInputControl> ();
+	@:noCompletion private var __controls = new Array<GameInputControl> ();
+	@:noCompletion private var __gamepad:Gamepad;
 	
 	
 	#if openfljs
-	private static function __init__ () {
+	@:noCompletion private static function __init__ () {
 		
 		untyped Object.defineProperties (GameInputDevice.prototype, {
 			"numControls": { get: untyped __js__ ("function () { return this.get_numControls (); }") },
@@ -35,7 +61,7 @@ import openfl.utils.ByteArray;
 	#end
 	
 	
-	private function new (id:String, name:String) {
+	@:noCompletion private function new (id:String, name:String) {
 		
 		this.id = id;
 		this.name = name;
@@ -61,6 +87,12 @@ import openfl.utils.ByteArray;
 	}
 	
 	
+	/**
+	 * Writes cached sample values to the ByteArray.
+	 * @param	data
+	 * @param	append
+	 * @return
+	 */
 	public function getCachedSamples (data:ByteArray, append:Bool = false):Int {
 		
 		return 0;
@@ -68,6 +100,11 @@ import openfl.utils.ByteArray;
 	}
 	
 	
+	/**
+	 * Retrieves a specific control from a device.
+	 * @param	i
+	 * @return
+	 */
 	public function getControlAt (i:Int):GameInputControl {
 		
 		if (i >= 0 && i < __controls.length) {
@@ -81,6 +118,11 @@ import openfl.utils.ByteArray;
 	}
 	
 	
+	/**
+	 * Requests this device to start keeping a cache of sampled values.
+	 * @param	numSamples
+	 * @param	controls
+	 */
 	public function startCachingSamples (numSamples:Int, controls:Vector<String>):Void {
 		
 		
@@ -88,6 +130,9 @@ import openfl.utils.ByteArray;
 	}
 	
 	
+	/**
+	 * Stops sample caching.
+	 */
 	public function stopCachingSamples ():Void {
 		
 		
@@ -102,7 +147,7 @@ import openfl.utils.ByteArray;
 	
 	
 	
-	private function get_numControls ():Int {
+	@:noCompletion private function get_numControls ():Int {
 		
 		return __controls.length;
 		
@@ -110,3 +155,8 @@ import openfl.utils.ByteArray;
 	
 	
 }
+
+
+#else
+typedef GameInputDevice = flash.ui.GameInputDevice;
+#end

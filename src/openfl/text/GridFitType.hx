@@ -1,4 +1,4 @@
-package openfl.text;
+package openfl.text; #if !flash #if !openfljs
 
 
 @:enum abstract GridFitType(Null<Int>) {
@@ -34,3 +34,21 @@ package openfl.text;
 	}
 	
 }
+
+
+#else
+
+
+@:enum abstract GridFitType(String) from String to String {
+	
+	public var NONE = "none";
+	public var PIXEL = "pixel";
+	public var SUBPIXEL = "subpixel";
+	
+}
+
+
+#end
+#else
+typedef GridFitType = flash.text.GridFitType;
+#end

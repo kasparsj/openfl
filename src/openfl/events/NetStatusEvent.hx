@@ -1,4 +1,10 @@
-package openfl.events;
+package openfl.events; #if !flash
+
+
+#if !openfl_debug
+@:fileXml('tags="haxe,release"')
+@:noDebug
+#end
 
 
 class NetStatusEvent extends Event {
@@ -37,3 +43,8 @@ class NetStatusEvent extends Event {
 	
 	
 }
+
+
+#else
+typedef NetStatusEvent = flash.events.NetStatusEvent;
+#end

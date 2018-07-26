@@ -1,8 +1,13 @@
-package openfl.events;
+package openfl.events; #if !flash
 
 
 import openfl.utils.ByteArray;
 import openfl.utils.Endian;
+
+#if !openfl_debug
+@:fileXml('tags="haxe,release"')
+@:noDebug
+#end
 
 
 class SampleDataEvent extends Event {
@@ -44,3 +49,8 @@ class SampleDataEvent extends Event {
 	
 	
 }
+
+
+#else
+typedef SampleDataEvent = flash.events.SampleDataEvent;
+#end

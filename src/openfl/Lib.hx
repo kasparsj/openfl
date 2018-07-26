@@ -38,13 +38,13 @@ import js.Browser;
 	public static var application (get, never):Application;
 	public static var current (get, never):MovieClip;
 	
-	private static var __lastTimerID:UInt = 0;
-	private static var __sentWarnings = new Map<String, Bool> ();
-	private static var __timers = new Map<UInt, Timer> ();
+	@:noCompletion private static var __lastTimerID:UInt = 0;
+	@:noCompletion private static var __sentWarnings = new Map<String, Bool> ();
+	@:noCompletion private static var __timers = new Map<UInt, Timer> ();
 	
 	
 	#if openfljs
-	private static function __init__ () {
+	@:noCompletion private static function __init__ () {
 		
 		untyped Object.defineProperties (Lib, {
 			"application": { get: function () { return Lib.get_application (); } },
@@ -174,7 +174,7 @@ import js.Browser;
 		#else
 		var uri = request.url;
 		
-		if (Std.is (request.data, URLVariables)) {
+		if (Type.typeof(request.data) == Type.ValueType.TObject) {
 			
 			var query = "";
 			var fields = Reflect.fields (request.data);
@@ -249,14 +249,14 @@ import js.Browser;
 	}
 	
 	
-	public static function setInterval (closure:Function, delay:Int, args:Array<Dynamic>):UInt {
+	public static function setInterval (closure:Function, delay:Int, args:Array<Dynamic> = null):UInt {
 		
 		var id = ++__lastTimerID;
 		var timer = new Timer (delay);
 		__timers[id] = timer;
 		timer.run = function () {
 			
-			Reflect.callMethod (closure, closure, args);
+			Reflect.callMethod (closure, closure, args == null ? [] : args);
 			
 		};
 		return id;
@@ -264,12 +264,12 @@ import js.Browser;
 	}
 	
 	
-	public static function setTimeout (closure:Function, delay:Int, args:Array<Dynamic>):UInt {
+	public static function setTimeout (closure:Function, delay:Int, args:Array<Dynamic> = null):UInt {
 		
 		var id = ++__lastTimerID;
 		__timers[id] = Timer.delay (function () {
 			
-			Reflect.callMethod (closure, closure, args);
+			Reflect.callMethod (closure, closure, args == null ? [] : args);
 			
 		}, delay);
 		return id;

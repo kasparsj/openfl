@@ -1,4 +1,4 @@
-package openfl.display3D.textures;
+package openfl.display3D.textures; #if !flash
 
 
 import lime.utils.ArrayBufferView;
@@ -18,7 +18,7 @@ import openfl.utils.ByteArray;
 @:final class RectangleTexture extends TextureBase {
 	
 	
-	private function new (context:Context3D, width:Int, height:Int, format:String, optimizeForRenderToTexture:Bool) {
+	@:noCompletion private function new (context:Context3D, width:Int, height:Int, format:String, optimizeForRenderToTexture:Bool) {
 		
 		super (context);
 		
@@ -27,37 +27,42 @@ import openfl.utils.ByteArray;
 		//__format = format;
 		__optimizeForRenderToTexture = optimizeForRenderToTexture;
 		
-		GLRectangleTexture.create (this, __context.__renderSession);
+		GLRectangleTexture.create (this, cast __context.__renderer);
 		
 	}
 	
 	
 	public function uploadFromBitmapData (source:BitmapData):Void {
 		
-		GLRectangleTexture.uploadFromBitmapData (this, __context.__renderSession, source);
+		GLRectangleTexture.uploadFromBitmapData (this, cast __context.__renderer, source);
 		
 	}
 	
 	
 	public function uploadFromByteArray (data:ByteArray, byteArrayOffset:UInt):Void {
 		
-		GLRectangleTexture.uploadFromByteArray (this, __context.__renderSession, data, byteArrayOffset);
+		GLRectangleTexture.uploadFromByteArray (this, cast __context.__renderer, data, byteArrayOffset);
 		
 	}
 	
 	
 	public function uploadFromTypedArray (data:ArrayBufferView):Void {
 		
-		GLRectangleTexture.uploadFromTypedArray (this, __context.__renderSession, data);
+		GLRectangleTexture.uploadFromTypedArray (this, cast __context.__renderer, data);
 		
 	}
 	
 	
-	private override function __setSamplerState (state:SamplerState) {
+	@:noCompletion private override function __setSamplerState (state:SamplerState) {
 		
-		GLRectangleTexture.setSamplerState (this, __context.__renderSession, state);
+		GLRectangleTexture.setSamplerState (this, cast __context.__renderer, state);
 		
 	}
 	
 	
 }
+
+
+#else
+typedef RectangleTexture = flash.display3D.textures.RectangleTexture;
+#end

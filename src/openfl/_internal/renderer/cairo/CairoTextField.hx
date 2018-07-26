@@ -10,10 +10,10 @@ import lime.graphics.cairo.CairoGlyph;
 import lime.graphics.cairo.CairoHintMetrics;
 import lime.graphics.cairo.CairoHintStyle;
 import lime.graphics.cairo.CairoImageSurface;
-import openfl._internal.renderer.RenderSession;
 import openfl._internal.text.TextEngine;
 import openfl.display.BitmapData;
-import openfl.filters.GlowFilter;
+import openfl.display.CairoRenderer;
+import openfl.display.Graphics;
 import openfl.geom.Matrix;
 import openfl.geom.Rectangle;
 import openfl.text.TextField;
@@ -33,12 +33,12 @@ import openfl.text.TextFormat;
 class CairoTextField {
 	
 	
-	public static function render (textField:TextField, renderSession:RenderSession, transform:Matrix) {
+	public static function render (textField:TextField, renderer:CairoRenderer, transform:Matrix) {
 		
 		#if lime_cairo
 		
 		var textEngine = textField.__textEngine;
-		var bounds = textEngine.bounds;
+		var bounds = (textEngine.background || textEngine.border) ? textEngine.bounds : textEngine.textBounds;
 		var graphics = textField.__graphics;
 		var cairo = graphics.__cairo;
 		
@@ -59,19 +59,26 @@ class CairoTextField {
 			
 		}
 		
-		graphics.__update ();
+		graphics.__update (renderer.__worldTransform);
 		
 		var width = graphics.__width;
 		var height = graphics.__height;
 		
 		var renderable = (textEngine.border || textEngine.background || textEngine.text != null);
+		var needsUpscaling = false;
 		
 		if (cairo != null) {
 			
 			//var surface:CairoImageSurface = cast cairo.target;
 			var surface = graphics.__bitmap.getSurface ();
 			
-			if (!renderable || (graphics.__dirty && (width != surface.width || height != surface.height))) {
+			if (graphics.__dirty && (width > surface.width || height > surface.height)) {
+				
+				needsUpscaling = true;
+				
+			}
+			
+			if (!renderable || needsUpscaling) {
 				
 				graphics.__cairo = null;
 				graphics.__bitmap = null;
@@ -91,7 +98,22 @@ class CairoTextField {
 		
 		if (cairo == null) {
 			
-			var bitmap = new BitmapData (width, height, true, 0);
+			var bitmapWidth = needsUpscaling ? Std.int (width * 1.25) : width;
+			var bitmapHeight = needsUpscaling ? Std.int (height * 1.25) : height;
+			
+			if (Graphics.maxTextureWidth != null && bitmapWidth > Graphics.maxTextureWidth) {
+				
+				bitmapWidth = Graphics.maxTextureWidth;
+				
+			}
+			
+			if (Graphics.maxTextureHeight != null && bitmapHeight > Graphics.maxTextureHeight) {
+				
+				bitmapHeight = Graphics.maxTextureHeight;
+				
+			}
+			
+			var bitmap = new BitmapData (bitmapWidth, bitmapHeight, true, 0);
 			var surface = bitmap.getSurface ();
 			graphics.__cairo = new Cairo (surface);
 			graphics.__visible = true;
@@ -119,20 +141,18 @@ class CairoTextField {
 			
 			cairo.fontOptions = options;
 			
-		}
-		
-		if (true || renderSession.roundPixels) {
-			
-			var matrix = graphics.__renderTransform.__toMatrix3 ();
-			matrix.tx = Math.round (matrix.tx);
-			matrix.ty = Math.round (matrix.ty);
-			cairo.matrix = matrix;
-			
 		} else {
 			
-			cairo.matrix = graphics.__renderTransform.__toMatrix3 ();
+			cairo.identityMatrix ();
+			cairo.resetClip ();
+			
+			cairo.operator = CLEAR;
+			cairo.paint ();
+			cairo.operator = OVER;
 			
 		}
+		
+		renderer.applyMatrix (graphics.__renderTransform, cairo);
 		
 		if (textEngine.border) {
 			
@@ -144,13 +164,7 @@ class CairoTextField {
 			
 		}
 		
-		if (!textEngine.background) {
-			
-			cairo.operator = CLEAR;
-			cairo.paint ();
-			cairo.operator = OVER;
-			
-		} else {
+		if (textEngine.background) {
 			
 			var color = textEngine.backgroundColor;
 			var r = ((color & 0xFF0000) >>> 16) / 0xFF;
@@ -231,70 +245,32 @@ class CairoTextField {
 					size = Std.int (group.format.size);
 					cairo.setFontSize (size);
 					
-					cairo.moveTo (group.offsetX + scrollX, group.offsetY + group.ascent + scrollY);
+					cairo.moveTo (group.offsetX + scrollX - bounds.x, group.offsetY + group.ascent + scrollY - bounds.y);
 					
-					var usedHack = false;
+					#if openfl_cairo_show_text
+					cairo.showText (text.substring (group.startIndex, group.endIndex));
+					#else
 					
-					if (textField.__filters != null && textField.__filters.length > 0) {
+					// TODO: Improve performance
+					
+					cairo.translate (0, 0);
+					
+					var glyphs = [];
+					var x:Float = group.offsetX + scrollX - bounds.x;
+					var y:Float = group.offsetY + group.ascent + scrollY - bounds.y;
+					var j = 0;
+					
+					for (position in group.positions) {
 						
-						// Hack, force outline
-						
-						if (Std.is (textField.__filters[0], GlowFilter)) {
-							
-							cairo.textPath (text.substring (group.startIndex, group.endIndex));
-							
-							var glowFilter:GlowFilter = cast textField.__filters[0];
-							
-							color = glowFilter.color;
-							r = ((color & 0xFF0000) >>> 16) / 0xFF;
-							g = ((color & 0x00FF00) >>> 8) / 0xFF;
-							b = (color & 0x0000FF) / 0xFF;
-							
-							cairo.setSourceRGBA (r, g, b, glowFilter.alpha);
-							cairo.lineWidth = Math.max (glowFilter.blurX, glowFilter.blurY);
-							cairo.strokePreserve ();
-							
-							color = group.format.color;
-							r = ((color & 0xFF0000) >>> 16) / 0xFF;
-							g = ((color & 0x00FF00) >>> 8) / 0xFF;
-							b = (color & 0x0000FF) / 0xFF;
-							
-							cairo.setSourceRGB (r, g, b);
-							
-							cairo.fillPreserve ();
-							usedHack = true;
-							
-						}
+						if (position == null || position.glyph == 0) continue;
+						glyphs.push (new CairoGlyph (position.glyph, x + position.offset.x + 0.5, y - position.offset.y + 0.5));
+						x += position.advance.x;
+						y -= position.advance.y;
 						
 					}
 					
-					if (!usedHack) {
-						
-						#if openfl_cairo_show_text
-						cairo.showText (text.substring (group.startIndex, group.endIndex));
-						#else
-						
-						// TODO: Improve performance
-						
-						cairo.translate (0, 0);
-						
-						var glyphs = [];
-						var x:Float = group.offsetX + scrollX;
-						var y:Float = group.offsetY + group.ascent + scrollY;
-						var j = 0;
-						
-						for (position in group.positions) {
-							
-							if (position == null || position.glyph == 0) continue;
-							glyphs.push (new CairoGlyph (position.glyph, x + 0.5, y + 0.5));
-							x += position.advance.x;
-							
-						}
-						
-						cairo.showGlyphs (glyphs);
-						#end
-						
-					}
+					cairo.showGlyphs (glyphs);
+					#end
 					
 					if (textField.__caretIndex > -1 && textEngine.selectable) {
 						
@@ -319,9 +295,9 @@ class CairoTextField {
 									
 								}
 								
-								cairo.moveTo (Math.floor (group.offsetX + advance) + 0.5 - textField.scrollH, scrollY + 2.5);
+								cairo.moveTo (Math.floor (group.offsetX + advance) + 0.5 - textField.scrollH - bounds.x, scrollY + 2.5 - bounds.y);
 								cairo.lineWidth = 1;
-								cairo.lineTo (Math.floor (group.offsetX + advance) + 0.5 - textField.scrollH, scrollY + TextEngine.getFormatHeight (textField.defaultTextFormat) - 1);
+								cairo.lineTo (Math.floor (group.offsetX + advance) + 0.5 - textField.scrollH - bounds.x, scrollY + TextEngine.getFormatHeight (textField.defaultTextFormat) - 1 - bounds.y);
 								cairo.stroke ();
 								
 							}
@@ -368,6 +344,8 @@ class CairoTextField {
 								// TODO: draw only once
 								
 								cairo.moveTo (scrollX + start.x, group.offsetY + group.ascent + scrollY);
+								
+								// TODO: Use `showGlyphs` not `showText`
 								cairo.showText (text.substring (selectionStart, selectionEnd));
 								
 							}

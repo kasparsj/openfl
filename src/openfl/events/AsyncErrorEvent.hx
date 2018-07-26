@@ -1,7 +1,12 @@
-package openfl.events;
+package openfl.events; #if !flash
 
 
 import haxe.io.Error;
+
+#if !openfl_debug
+@:fileXml('tags="haxe,release"')
+@:noDebug
+#end
 
 
 class AsyncErrorEvent extends ErrorEvent {
@@ -41,3 +46,8 @@ class AsyncErrorEvent extends ErrorEvent {
 	
 	
 }
+
+
+#else
+typedef AsyncErrorEvent = flash.events.AsyncErrorEvent;
+#end

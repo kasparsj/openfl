@@ -6,8 +6,6 @@ import haxe.Utf8;
 import lime.graphics.cairo.CairoFontFace;
 import lime.graphics.opengl.GLTexture;
 import lime.system.System;
-import lime.text.GlyphPosition;
-import lime.text.TextLayout;
 import lime.text.UTF8String;
 import openfl.Vector;
 import openfl.events.Event;
@@ -89,6 +87,7 @@ class TextEngine {
 	public var selectable:Bool;
 	public var sharpness:Float;
 	public var text (default, set):UTF8String;
+	public var textBounds:Rectangle;
 	public var textHeight:Float;
 	public var textFormatRanges:Vector<TextFormatRange>;
 	public var textWidth:Float;
@@ -127,6 +126,7 @@ class TextEngine {
 		text = "";
 		
 		bounds = new Rectangle (0, 0, 0, 0);
+		textBounds = new Rectangle (0, 0, 0, 0);
 		
 		type = TextFieldType.DYNAMIC;
 		autoSize = TextFieldAutoSize.NONE;
@@ -262,6 +262,20 @@ class TextEngine {
 		bounds.width = width + padding;
 		bounds.height = height + padding;
 		
+		var x = width, y = width;
+		
+		for (group in layoutGroups) {
+			
+			if (group.offsetX < x) x = group.offsetX;
+			if (group.offsetY < y) y = group.offsetY;
+			
+		}
+		
+		if (x >= width) x = 2;
+		if (y >= height) y = 2;
+		
+		textBounds.setTo (Math.max (x - 2, 0), Math.max (y - 2, 0), textWidth + 4, textHeight + 4);
+		
 	}
 	
 	
@@ -272,12 +286,12 @@ class TextEngine {
 		#if (js && html5)
 		
 		__context.font = getFont (format);
-
+		
 		if (format.__ascent != null) {
-
+			
 			ascent = format.size * format.__ascent;
 			descent = format.size * format.__descent;
-
+			
 		} else {
 			
 			ascent = format.size;
@@ -292,15 +306,15 @@ class TextEngine {
 		var font = getFontInstance (format);
 		
 		if (format.__ascent != null) {
-
+			
 			ascent = format.size * format.__ascent;
 			descent = format.size * format.__descent;
-
+			
 		} else if (font != null) {
-
+			
 			ascent = (font.ascender / font.unitsPerEM) * format.size;
 			descent = Math.abs ((font.descender / font.unitsPerEM) * format.size);
-
+			
 		} else {
 			
 			ascent = format.size;
@@ -491,19 +505,6 @@ class TextEngine {
 					fontList = [ systemFontDirectory + "/" + format.font ];
 				
 			}
-			
-			#if lime_console
-				
-				// TODO(james4k): until we figure out our story for the above switch
-				// statement, always load arial unless a file is specified.
-				if (format == null
-					|| StringTools.startsWith (format.font,  "_")
-					|| format.font.indexOf(".") == -1
-				) {
-					fontList = [ "arial.ttf" ];
-				}
-				
-			#end
 			
 			if (fontList != null) {
 				
@@ -708,6 +709,67 @@ class TextEngine {
 			
 		}
 		
+		if (textHeight == 0 && textField != null && textField.type == INPUT) {
+			
+			var currentFormat = textField.__textFormat;
+			var ascent, descent, leading, heightValue;
+			
+			#if js
+			
+			// __context.font = getFont (currentFormat);
+			
+			if (currentFormat.__ascent != null) {
+				
+				ascent = currentFormat.size * currentFormat.__ascent;
+				descent = currentFormat.size * currentFormat.__descent;
+				
+			} else {
+				
+				ascent = currentFormat.size;
+				descent = currentFormat.size * 0.185;
+				
+			}
+			
+			leading = currentFormat.leading;
+			
+			heightValue = ascent + descent + leading;
+			
+			#elseif (lime_cffi)
+			
+			var font = getFontInstance (currentFormat);
+			
+			if (currentFormat.__ascent != null) {
+				
+				ascent = currentFormat.size * currentFormat.__ascent;
+				descent = currentFormat.size * currentFormat.__descent;
+				
+			} else if (font != null) {
+				
+				ascent = (font.ascender / font.unitsPerEM) * currentFormat.size;
+				descent = Math.abs ((font.descender / font.unitsPerEM) * currentFormat.size);
+				
+			} else {
+				
+				ascent = currentFormat.size;
+				descent = currentFormat.size * 0.185;
+				
+			}
+			
+			leading = currentFormat.leading;
+			
+			heightValue = ascent + descent + leading;
+			
+			#end
+			
+			currentLineAscent = ascent;
+			currentLineDescent = descent;
+			currentLineLeading = leading;
+			
+			currentTextHeight = ascent + descent;
+			textHeight = currentTextHeight;
+			
+		}
+		
 		lineAscents.push (currentLineAscent);
 		lineDescents.push (currentLineDescent);
 		lineLeadings.push (currentLineLeading != null ? currentLineLeading : 0);
@@ -764,6 +826,9 @@ class TextEngine {
 		
 		maxScrollV = numLines - bottomScrollV + 1;
 		
+		if (scrollV > maxScrollV) scrollV = maxScrollV;
+		if (scrollH > maxScrollH) scrollH = maxScrollH;
+		
 	}
 	
 	
@@ -801,6 +866,13 @@ class TextEngine {
 			// TODO: optimize
 			
 			var positions = [];
+			var letterSpacing = 0.0;
+			
+			if (formatRange.format.letterSpacing != null) {
+				
+				letterSpacing = formatRange.format.letterSpacing;
+				
+			}
 			
 			#if (js && html5)
 			
@@ -820,6 +892,7 @@ class TextEngine {
 				for (i in startIndex...endIndex) {
 					
 					width = __context.measureText (text.substring (startIndex, i + 1)).width;
+					// if (i > 0) width += letterSpacing;
 					
 					positions.push (width - previousWidth);
 					
@@ -845,6 +918,8 @@ class TextEngine {
 						advance = __context.measureText (text.charAt (i)).width;
 						
 					}
+					
+					// if (i > 0) advance += letterSpacing;
 					
 					positions.push (advance);
 					
@@ -872,6 +947,14 @@ class TextEngine {
 				__textLayout.size = formatRange.format.size;
 				
 			}
+			
+			#if (lime >= "7.0.0")
+			__textLayout.letterSpacing = letterSpacing;
+			__textLayout.autoHint = (antiAliasType != ADVANCED || sharpness < 400);
+			#end
+			
+			// __textLayout.direction = RIGHT_TO_LEFT;
+			// __textLayout.script = ARABIC;
 			
 			__textLayout.text = text.substring (startIndex, endIndex);
 			return __textLayout.positions;
@@ -922,6 +1005,9 @@ class TextEngine {
 				__textLayout.size = formatRange.format.size;
 				
 			}
+			
+			// __textLayout.direction = RIGHT_TO_LEFT;
+			// __textLayout.script = ARABIC;
 			
 			__textLayout.text = text;
 			
@@ -1026,6 +1112,7 @@ class TextEngine {
 		}
 		
 		inline function alignBaseline ():Void {
+			// aligns the baselines of all characters in a single line
 			
 			// since nextFormatRange may not have been called, have to update these manually
 			if (ascent > maxAscent) {
@@ -1040,10 +1127,14 @@ class TextEngine {
 				
 			}
 			
-			for (lg in layoutGroups) {
+			var i = layoutGroups.length;
+			
+			while (--i > -1) {
 				
-				if (lg.lineIndex < lineIndex) continue;
-				if (lg.lineIndex > lineIndex) break;
+				var lg = layoutGroups[i];
+				
+				if (lg.lineIndex < lineIndex) break;
+				if (lg.lineIndex > lineIndex) continue;
 				
 				lg.ascent = maxAscent;
 				lg.height = maxHeightValue;
@@ -1329,7 +1420,7 @@ class TextEngine {
 						
 						if (textIndex == previousSpaceIndex + 1) {
 							
-							alignBaseline();
+							alignBaseline ();
 							
 						}
 						
@@ -1351,7 +1442,7 @@ class TextEngine {
 							
 						}
 						
-						if (width >= 4) breakLongWords(endIndex);
+						if (width >= 4) breakLongWords (endIndex);
 						
 						nextLayoutGroup (textIndex, endIndex);
 						
@@ -1514,12 +1605,38 @@ class TextEngine {
 	}
 	
 	
+	public function restrictText (value:UTF8String):UTF8String {
+		
+		if (value == null) {
+			
+			return value;
+			
+		}
+		
+		if (__restrictRegexp != null) {
+			
+			value = __restrictRegexp.split (value).join ('');
+			
+		}
+		
+		// if (maxChars > 0 && value.length > maxChars) {
+			
+		// 	value = value.substr (0, maxChars);
+			
+		// }
+		
+		return value;
+		
+	}
+	
+	
 	private function setTextAlignment ():Void {
 		
 		var lineIndex = -1;
 		var offsetX = 0.0;
 		var totalWidth = this.width - 4;
 		var group, lineLength;
+		var lineMeasurementsDirty = false;
 		
 		for (i in 0...layoutGroups.length) {
 			
@@ -1587,16 +1704,17 @@ class TextEngine {
 								if (group.endIndex < text.length && endChar != "\n".code && endChar != "\r".code) {
 									
 									offsetX = (totalWidth - lineWidths[lineIndex]) / (lineLength - 1);
+									lineMeasurementsDirty = true;
 									
-									var j = 0;
+									var j = 1;
 									do {
 										
-										if (j > 1 && text.charCodeAt (layoutGroups[j].startIndex - 1) != " ".code) {
+										// if (text.charCodeAt (layoutGroups[j].startIndex - 1) != " ".code) {
 											
-											layoutGroups[i + j].offsetX += (offsetX * (j-1));
-											j++;
+										// 	layoutGroups[i + j].offsetX += (offsetX * (j-1));
+										// 	j++;
 											
-										}
+										// }
 										
 										layoutGroups[i + j].offsetX += (offsetX * j);
 										
@@ -1625,6 +1743,33 @@ class TextEngine {
 			}
 			
 		}
+		
+		if (lineMeasurementsDirty) {
+			
+			// TODO: Better way to fix justify textWidth?
+			
+			getLineMeasurements ();
+			
+		}
+		
+	}
+	
+	
+	public function trimText (value:UTF8String):UTF8String {
+		
+		if (value == null) {
+			
+			return value;
+			
+		}
+		
+		if (maxChars > 0 && value.length > maxChars) {
+			
+			value = value.substr (0, maxChars);
+			
+		}
+		
+		return value;
 		
 	}
 	
@@ -1694,27 +1839,7 @@ class TextEngine {
 	
 	private function set_text (value:String):String {
 		
-		if (value == null) {
-			
-			return text = value;
-			
-		}
-		
-		if (__restrictRegexp != null) {
-			
-			value = __restrictRegexp.split (value).join ('');
-			
-		}
-		
-		if (maxChars > 0 && value.length > maxChars) {
-			
-			value = value.substr (0, maxChars);
-			
-		}
-		
-		text = value;
-		
-		return text;
+		return text = value;
 		
 	}
 	

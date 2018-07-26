@@ -1,27 +1,38 @@
-package openfl.filters;
+package openfl.filters; #if !flash
 
 
-import lime.graphics.utils.ImageCanvasUtil;
-import lime.math.color.RGBA;
-import openfl._internal.renderer.RenderSession;
 import openfl.display.BitmapData;
+import openfl.display.DisplayObjectRenderer;
 import openfl.display.Shader;
 import openfl.geom.Point;
 import openfl.geom.Rectangle;
+
+#if (lime >= "7.0.0")
+import lime._internal.graphics.ImageCanvasUtil; // TODO
+import lime.math.RGBA;
+#else
+import lime.graphics.utils.ImageCanvasUtil;
+import lime.math.color.RGBA;
+#end
+
+#if !openfl_debug
+@:fileXml('tags="haxe,release"')
+@:noDebug
+#end
 
 
 @:final class ColorMatrixFilter extends BitmapFilter {
 	
 	
-	//private static var __colorMatrixShader = new ColorMatrixShader ();
+	@:noCompletion private static var __colorMatrixShader = new ColorMatrixShader ();
 	
 	public var matrix (get, set):Array<Float>;
 	
-	private var __matrix:Array<Float>;
+	@:noCompletion private var __matrix:Array<Float>;
 	
 	
 	#if openfljs
-	private static function __init__ () {
+	@:noCompletion private static function __init__ () {
 		
 		untyped Object.defineProperties (ColorMatrixFilter.prototype, {
 			"matrix": { get: untyped __js__ ("function () { return this.get_matrix (); }"), set: untyped __js__ ("function (v) { return this.set_matrix (v); }") },
@@ -37,8 +48,7 @@ import openfl.geom.Rectangle;
 		
 		this.matrix = matrix;
 		
-		// __numShaderPasses = 1;
-		__numShaderPasses = 0;
+		__numShaderPasses = 1;
 		__needSecondBitmapData = false;
 		
 	}
@@ -51,7 +61,7 @@ import openfl.geom.Rectangle;
 	}
 	
 	
-	private override function __applyFilter (destBitmapData:BitmapData, sourceBitmapData:BitmapData, sourceRect:Rectangle, destPoint:Point):BitmapData {
+	@:noCompletion private override function __applyFilter (destBitmapData:BitmapData, sourceBitmapData:BitmapData, sourceRect:Rectangle, destPoint:Point):BitmapData {
 		
 		var sourceImage = sourceBitmapData.image; 
 		var image = destBitmapData.image;
@@ -111,11 +121,10 @@ import openfl.geom.Rectangle;
 	}
 	
 	
-	private override function __initShader (renderSession:RenderSession, pass:Int):Shader {
+	@:noCompletion private override function __initShader (renderer:DisplayObjectRenderer, pass:Int):Shader {
 		
-		return null;
-		//__colorMatrixShader.init (matrix);
-		//return __colorMatrixShader;
+		__colorMatrixShader.init (matrix);
+		return __colorMatrixShader;
 		
 	}
 	
@@ -127,14 +136,14 @@ import openfl.geom.Rectangle;
 	
 	
 	
-	private function get_matrix ():Array<Float> {
+	@:noCompletion private function get_matrix ():Array<Float> {
 		
 		return __matrix;
 		
 	}
 	
 	
-	private function set_matrix (value:Array<Float>):Array<Float> {
+	@:noCompletion private function set_matrix (value:Array<Float>):Array<Float> {
 		
 		if (value == null) {
 			
@@ -156,21 +165,20 @@ import openfl.geom.Rectangle;
 #end
 
 
-private class ColorMatrixShader extends Shader {
+private class ColorMatrixShader extends BitmapFilterShader {
 	
 	
 	@:glFragmentSource( 
 		
-		"varying float vAlpha;
-		varying vec2 vTexCoord;
-		uniform sampler2D uImage0;
+		"varying vec2 openfl_TextureCoordv;
+		uniform sampler2D openfl_Texture;
 		
 		uniform mat4 uMultipliers;
 		uniform vec4 uOffsets;
 		
 		void main(void) {
 			
-			vec4 color = texture2D (uImage0, vTexCoord);
+			vec4 color = texture2D (openfl_Texture, openfl_TextureCoordv);
 			
 			if (color.a == 0.0) {
 				
@@ -181,7 +189,7 @@ private class ColorMatrixShader extends Shader {
 				color = vec4 (color.rgb / color.a, color.a);
 				color = uOffsets + color * uMultipliers;
 				
-				gl_FragColor = vec4 (color.rgb * color.a * vAlpha, color.a * vAlpha);
+				gl_FragColor = vec4 (color.rgb * color.a, color.a);
 				
 			}
 			
@@ -195,8 +203,8 @@ private class ColorMatrixShader extends Shader {
 		super ();
 		
 		#if !macro
-		data.uMultipliers.value = [ 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 ];
-		data.uOffsets.value = [ 0, 0, 0, 0 ];
+		uMultipliers.value = [ 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 ];
+		uOffsets.value = [ 0, 0, 0, 0 ];
 		#end
 		
 	}
@@ -204,8 +212,9 @@ private class ColorMatrixShader extends Shader {
 	
 	public function init (matrix:Array<Float>):Void {
 		
-		var multipliers = data.uMultipliers.value;
-		var offsets = data.uOffsets.value;
+		#if !macro
+		var multipliers = uMultipliers.value;
+		var offsets = uOffsets.value;
 		
 		multipliers[0] = matrix[0];
 		multipliers[1] = matrix[1];
@@ -228,8 +237,14 @@ private class ColorMatrixShader extends Shader {
 		offsets[1] = matrix[9] / 255.0;
 		offsets[2] = matrix[14] / 255.0;
 		offsets[3] = matrix[19] / 255.0;
+		#end
 		
 	}
 	
 	
 }
+
+
+#else
+typedef ColorMatrixFilter = flash.filters.ColorMatrixFilter;
+#end

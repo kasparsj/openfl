@@ -18,18 +18,6 @@ import haxe.Json;
 import haxe.Serializer;
 import haxe.Template;
 import haxe.Unserializer;
-import lime.tools.helpers.AssetHelper;
-import lime.tools.helpers.LogHelper;
-import lime.tools.helpers.PathHelper;
-import lime.tools.helpers.PlatformHelper;
-import lime.tools.helpers.StringHelper;
-import lime.project.Architecture;
-import lime.project.Asset;
-import lime.project.AssetEncoding;
-import lime.project.AssetType;
-import lime.project.Haxelib;
-import lime.project.HXProject;
-import lime.project.Platform;
 import lime.utils.AssetManifest;
 import openfl._internal.symbols.BitmapSymbol;
 import openfl._internal.symbols.ButtonSymbol;
@@ -45,6 +33,34 @@ import openfl.utils.ByteArray;
 import sys.io.File;
 import sys.io.Process;
 import sys.FileSystem;
+
+#if hxp
+import hxp.helpers.AssetHelper;
+import hxp.helpers.LogHelper;
+import hxp.helpers.PathHelper;
+import hxp.helpers.PlatformHelper;
+import hxp.helpers.StringHelper;
+import hxp.project.Architecture;
+import hxp.project.Asset;
+import hxp.project.AssetEncoding;
+import hxp.project.AssetType;
+import hxp.project.Haxelib;
+import hxp.project.HXProject;
+import hxp.project.Platform;
+#else
+import lime.tools.helpers.AssetHelper;
+import lime.tools.helpers.LogHelper;
+import lime.tools.helpers.PathHelper;
+import lime.tools.helpers.PlatformHelper;
+import lime.tools.helpers.StringHelper;
+import lime.project.Architecture;
+import lime.project.Asset;
+import lime.project.AssetEncoding;
+import lime.project.AssetType;
+import lime.project.Haxelib;
+import lime.project.HXProject;
+import lime.project.Platform;
+#end
 
 
 class Tools {
@@ -317,10 +333,15 @@ class Tools {
 	}
 	
 	
-	private static function generateSWFLiteClasses (project:HXProject, output:HXProject, swfLite:SWFLite, swfLiteAsset:Asset, prefix:String = ""):Array<String> {
+	private static function generateSWFLiteClasses (targetPath:String, output:Array<Asset>, swfLite:SWFLite, swfID:String, prefix:String = ""):Array<String> {
 		
+		#if commonjs
+		var movieClipTemplate = File.getContent (PathHelper.combine (js.Node.__dirname, "../assets/templates/swf/MovieClip.mtt"));
+		var simpleButtonTemplate = File.getContent (PathHelper.combine (js.Node.__dirname, "../assets/templates/swf/SimpleButton.mtt"));
+		#else
 		var movieClipTemplate = File.getContent (PathHelper.getHaxelib (new Haxelib ("openfl"), true) + "/assets/templates/swf/MovieClip.mtt");
 		var simpleButtonTemplate = File.getContent (PathHelper.getHaxelib (new Haxelib ("openfl"), true) + "/assets/templates/swf/SimpleButton.mtt");
+		#end
 		
 		var generatedClasses = [];
 		
@@ -420,23 +441,12 @@ class Tools {
 					
 				}
 				
-				var context = { PACKAGE_NAME: packageName, PACKAGE_NAME_DOT: packageNameDot, CLASS_NAME: name, SWF_ID: swfLiteAsset.id, SYMBOL_ID: symbolID, PREFIX: "", CLASS_PROPERTIES: classProperties };
+				var context = { PACKAGE_NAME: packageName, PACKAGE_NAME_DOT: packageNameDot, CLASS_NAME: name, SWF_ID: swfID, SYMBOL_ID: symbolID, PREFIX: "", CLASS_PROPERTIES: classProperties };
 				var template = new Template (templateData);
-				var targetPath;
-				
-				if (project.target == IOS) {
-					
-					targetPath = PathHelper.tryFullPath (targetDirectory) + "/" + project.app.file + "/" + "/haxe/_generated";
-					
-				} else {
-					
-					targetPath = PathHelper.tryFullPath (targetDirectory) + "/haxe/_generated";
-					
-				}
 				
 				var templateFile = new Asset ("", PathHelper.combine (targetPath, Path.directory (symbol.className.split (".").join ("/"))) + "/" + name + ".hx", AssetType.TEMPLATE);
 				templateFile.data = template.execute (context);
-				output.assets.push (templateFile);
+				output.push (templateFile);
 				
 				generatedClasses.push (className);
 				
@@ -673,17 +683,17 @@ class Tools {
 			}
 			
 		}
-
+		
 		createdDirectory = false;
 		for (id in exporter.sounds.keys ()) {
-
+			
 			if (!createdDirectory) {
-
+				
 				PathHelper.mkdir (PathHelper.combine (targetPath, "sounds"));
 				createdDirectory = true;
-
+				
 			}
-
+			
 			var symbolClassName = exporter.soundSymbolClassNames.get (id);
 			var typeId = exporter.soundTypes.get (id);
 			
@@ -698,9 +708,9 @@ class Tools {
 			};
 			var path = "sounds/"+ symbolClassName + "." + type;
 			var assetData = exporter.sounds.get (id);
-
+			
 			File.saveBytes (PathHelper.combine (targetPath, path), assetData);
-
+			
 			// NOTICE: everything must be .mp3 in its final form, even though we write out various formats to disk
 			var soundAsset = new Asset ("", "sounds/"+ symbolClassName + ".mp3", AssetType.SOUND);
 			project.assets.push (soundAsset);
@@ -712,14 +722,40 @@ class Tools {
 		
 		File.saveContent (PathHelper.combine (targetPath, swfLiteAsset.targetPath), swfLiteAssetData);
 		
-		// TODO: Generate
+		var srcPath = PathHelper.combine (targetPath, "src");
+		var exportedClasses = [];
+		
+		// TODO: Allow prefix, fix generated class SWFLite references
+		var prefix = "";
+		var uuid = StringHelper.generateUUID (20);
+		
+		#if !commonjs
+		generateSWFLiteClasses (srcPath, exportedClasses, swfLite, uuid, prefix);
+		
+		for (file in exportedClasses) {
+			
+			PathHelper.mkdir (Path.directory (file.targetPath));
+			File.saveContent (file.targetPath, file.data);
+			
+		}
+		#end
 		
 		var data = AssetHelper.createManifest (project);
 		data.libraryType = "openfl._internal.swf.SWFLiteLibrary";
-		data.libraryArgs = [ "swflite" + SWFLITE_DATA_SUFFIX ];
+		data.libraryArgs = [ "swflite" + SWFLITE_DATA_SUFFIX, uuid ];
 		data.name = Path.withoutDirectory (Path.withoutExtension (sourcePath));
 		
 		File.saveContent (PathHelper.combine (targetPath, "library.json"), data.serialize ());
+		
+		var includeXML = 
+'<?xml version="1.0" encoding="utf-8"?>
+<library>
+	
+	<source path="src" />
+	
+</library>';
+		
+		File.saveContent (PathHelper.combine (targetPath, "include.xml"), includeXML);
 		
 		return true;
 		
@@ -1025,7 +1061,19 @@ class Tools {
 						
 						if (library.generate) {
 							
-							var generatedClasses = generateSWFLiteClasses (project, output, swfLite, swfLiteAsset, library.prefix);
+							var targetPath;
+							
+							if (project.target == IOS) {
+								
+								targetPath = PathHelper.tryFullPath (targetDirectory) + "/" + project.app.file + "/" + "/haxe/_generated";
+								
+							} else {
+								
+								targetPath = PathHelper.tryFullPath (targetDirectory) + "/haxe/_generated";
+								
+							}
+							
+							var generatedClasses = generateSWFLiteClasses (targetPath, output.assets, swfLite, swfLiteAsset.id, library.prefix);
 							
 							for (className in generatedClasses) {
 								

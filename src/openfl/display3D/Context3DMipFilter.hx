@@ -1,5 +1,9 @@
-package openfl.display3D;
+package openfl.display3D; #if !flash #if !openfljs
+
+
+#if cs
 import openfl._internal.utils.NullUtils;
+#end
 
 
 @:enum abstract Context3DMipFilter(Null<Int>) {
@@ -51,3 +55,21 @@ import openfl._internal.utils.NullUtils;
 	#end
 	
 }
+
+
+#else
+
+
+@:enum abstract Context3DMipFilter(String) from String to String {
+	
+	public var MIPLINEAR = "miplinear";
+	public var MIPNEAREST = "mipnearest";
+	public var MIPNONE = "mipnone";
+	
+}
+
+
+#end
+#else
+typedef Context3DMipFilter = flash.display3D.Context3DMipFilter;
+#end

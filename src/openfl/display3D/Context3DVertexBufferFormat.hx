@@ -1,5 +1,9 @@
-package openfl.display3D;
+package openfl.display3D; #if !flash #if !openfljs
+
+
+#if cs
 import openfl._internal.utils.NullUtils;
+#end
 
 
 @:enum abstract Context3DVertexBufferFormat(Null<Int>) {
@@ -57,3 +61,23 @@ import openfl._internal.utils.NullUtils;
 	#end
 	
 }
+
+
+#else
+
+
+@:enum abstract Context3DVertexBufferFormat(String) from String to String {
+	
+	public var BYTES_4 = "bytes4";
+	public var FLOAT_1 = "float1";
+	public var FLOAT_2 = "float2";
+	public var FLOAT_3 = "float3";
+	public var FLOAT_4 = "float4";
+	
+}
+
+
+#end
+#else
+typedef Context3DVertexBufferFormat = flash.display3D.Context3DVertexBufferFormat;
+#end

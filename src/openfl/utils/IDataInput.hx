@@ -1,11 +1,14 @@
-package openfl.utils;
+package openfl.utils; #if !flash
+
+
+import openfl.net.ObjectEncoding;
 
 
 interface IDataInput {
 	
 	public var bytesAvailable (get, never):UInt;
 	public var endian (get, set):Endian;
-	public var objectEncoding:UInt;
+	public var objectEncoding:ObjectEncoding;
 	
 	public function readBoolean ():Bool;
 	public function readByte ():Int;
@@ -23,3 +26,8 @@ interface IDataInput {
 	public function readUTFBytes (length:Int):String;
 	
 }
+
+
+#else
+typedef IDataInput = flash.utils.IDataInput;
+#end

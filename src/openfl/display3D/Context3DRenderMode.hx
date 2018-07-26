@@ -1,5 +1,9 @@
-package openfl.display3D;
+package openfl.display3D; #if !flash #if !openfljs
+
+
+#if cs
 import openfl._internal.utils.NullUtils;
+#end
 
 
 @:enum abstract Context3DRenderMode(Null<Int>) {
@@ -48,3 +52,20 @@ import openfl._internal.utils.NullUtils;
 	#end
 	
 }
+
+
+#else
+
+
+@:enum abstract Context3DRenderMode(String) from String to String {
+	
+	public var AUTO = "auto";
+	public var SOFTWARE = "software";
+	
+}
+
+
+#end
+#else
+typedef Context3DRenderMode = flash.display3D.Context3DRenderMode;
+#end

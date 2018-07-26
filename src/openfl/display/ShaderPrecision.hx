@@ -1,4 +1,4 @@
-package openfl.display;
+package openfl.display; #if !flash #if !openfljs
 
 
 @:enum abstract ShaderPrecision(Null<Int>) {
@@ -31,3 +31,20 @@ package openfl.display;
 	}
 	
 }
+
+
+#else
+
+
+@:enum abstract ShaderPrecision(String) from String to String {
+	
+	public var FAST = "fast";
+	public var FULL = "full";
+	
+}
+
+
+#end
+#else
+typedef ShaderPrecision = flash.display.ShaderPrecision;
+#end

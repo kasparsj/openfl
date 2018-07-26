@@ -1,4 +1,10 @@
-package openfl.media;
+package openfl.media; #if !flash
+
+
+#if !openfl_debug
+@:fileXml('tags="haxe,release"')
+@:noDebug
+#end
 
 
 @:final class ID3Info {
@@ -21,3 +27,8 @@ package openfl.media;
 	
 	
 }
+
+
+#else
+typedef ID3Info = flash.media.ID3Info;
+#end

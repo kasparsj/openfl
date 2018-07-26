@@ -25,6 +25,26 @@ class ExtraParams {
 				
 			}
 			
+			if (Context.defined ("js") && !Context.defined ("nodejs") && !Context.defined ("lime")) {
+				
+				var childPath = Context.resolvePath ("openfl/external");
+				
+				var parts = StringTools.replace (childPath, "\\", "/").split ("/");
+				
+				if (parts.length > 3) {
+					
+					parts.pop ();
+					parts.pop ();
+					parts.pop ();
+					
+					var openflPath = parts.join ("/");
+					
+					Compiler.addClassPath (openflPath + "/lib");
+					
+				}
+				
+			}
+			
 		}
 		
 	}
@@ -32,16 +52,17 @@ class ExtraParams {
 	
 	public static function includeExterns ():Void {
 		
-		var childPath = Context.resolvePath ("externs/core");
+		var childPath = Context.resolvePath ("openfl/_internal/symbols");
 		
 		var parts = StringTools.replace (childPath, "\\", "/").split ("/");
-		parts.pop ();
+		parts.pop (); // _internal
+		parts.pop (); // openfl
+		parts.pop (); // src
+		parts.pop (); // root
 		
-		var externsPath = parts.join ("/");
+		var externsPath = parts.join ("/") + "/externs";
 		
-		Compiler.addClassPath (externsPath + "/core/openfl");
-		Compiler.addClassPath (externsPath + "/core/flash");
-		Compiler.addClassPath (externsPath + "/extras");
+		Compiler.addClassPath (externsPath + "/flash");
 		
 	}
 	

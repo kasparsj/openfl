@@ -1,11 +1,19 @@
-package openfl.display;
+package openfl.display; #if !flash
 
 
-import lime.graphics.GLRenderContext;
 import lime.graphics.opengl.GLProgram;
+import lime.graphics.opengl.GLShader;
 import lime.utils.Float32Array;
-import lime.utils.GLUtils;
+import lime.utils.Log;
+import openfl._internal.renderer.ShaderBuffer;
 import openfl.utils.ByteArray;
+
+#if (lime >= "7.0.0")
+import lime.graphics.RenderContext;
+#else
+import lime.graphics.opengl.WebGLContext;
+import lime.graphics.GLRenderContext;
+#end
 
 #if !openfl_debug
 @:fileXml('tags="haxe,release"')
@@ -15,14 +23,16 @@ import openfl.utils.ByteArray;
 @:access(openfl.display.ShaderInput)
 @:access(openfl.display.ShaderParameter)
 
-#if (!display && !macro)
+// #if (!display && !macro)
+#if !macro
 @:autoBuild(openfl._internal.macros.ShaderMacro.build())
-@:build(openfl._internal.macros.ShaderMacro.build())
 #end
 
 
 class Shader {
 	
+	
+	@:noCompletion private static var __glPrograms = new Map<String, GLProgram> ();
 	
 	public var byteCode (null, default):ByteArray;
 	public var data (get, set):ShaderData;
@@ -31,25 +41,31 @@ class Shader {
 	public var glVertexSource (get, set):String;
 	public var precisionHint:ShaderPrecision;
 	
-	private var gl:GLRenderContext;
-	
-	private var __data:ShaderData;
-	private var __glFragmentSource:String;
-	private var __glSourceDirty:Bool;
-	private var __glVertexSource:String;
-	private var __isUniform:Map<String, Bool>;
-	private var __inputBitmapData:Array<ShaderInput<BitmapData>>;
-	private var __numPasses:Int;
-	private var __paramBool:Array<ShaderParameter<Bool>>;
-	private var __paramFloat:Array<ShaderParameter<Float>>;
-	private var __paramInt:Array<ShaderParameter<Int>>;
-	private var __uniformMatrix2:Float32Array;
-	private var __uniformMatrix3:Float32Array;
-	private var __uniformMatrix4:Float32Array;
+	@:noCompletion private var __alpha:ShaderParameter<Float>;
+	@:noCompletion private var __bitmap:ShaderInput<BitmapData>;
+	@:noCompletion private var __colorMultiplier:ShaderParameter<Float>;
+	@:noCompletion private var __colorOffset:ShaderParameter<Float>;
+	@:noCompletion private var __context:#if (lime >= "7.0.0") RenderContext #else GLRenderContext #end;
+	@:noCompletion private var __data:ShaderData;
+	@:noCompletion private var __glFragmentSource:String;
+	@:noCompletion private var __glSourceDirty:Bool;
+	@:noCompletion private var __glVertexSource:String;
+	@:noCompletion private var __hasColorTransform:ShaderParameter<Bool>;
+	@:noCompletion private var __inputBitmapData:Array<ShaderInput<BitmapData>>;
+	@:noCompletion private var __isGenerated:Bool;
+	@:noCompletion private var __matrix:ShaderParameter<Float>;
+	@:noCompletion private var __numPasses:Int;
+	@:noCompletion private var __paramBool:Array<ShaderParameter<Bool>>;
+	@:noCompletion private var __paramFloat:Array<ShaderParameter<Float>>;
+	@:noCompletion private var __paramInt:Array<ShaderParameter<Int>>;
+	@:noCompletion private var __position:ShaderParameter<Float>;
+	@:noCompletion private var __textureCoord:ShaderParameter<Float>;
+	@:noCompletion private var __texture:ShaderInput<BitmapData>;
+	@:noCompletion private var __textureSize:ShaderParameter<Float>;
 	
 	
 	#if openfljs
-	private static function __init__ () {
+	@:noCompletion private static function __init__ () {
 		
 		untyped Object.defineProperties (Shader.prototype, {
 			"data": { get: untyped __js__ ("function () { return this.get_data (); }"), set: untyped __js__ ("function (v) { return this.set_data (v); }") },
@@ -61,117 +77,6 @@ class Shader {
 	#end
 	
 	
-	@:glFragmentSource(
-		
-		#if emscripten
-		"varying float vAlpha;
-		varying mat4 vColorMultipliers;
-		varying vec4 vColorOffsets;
-		varying vec2 vTexCoord;
-		
-		uniform bool uColorTransform;
-		uniform sampler2D uImage0;
-		
-		void main(void) {
-			
-			vec4 color = texture2D (uImage0, vTexCoord);
-			
-			if (color.a == 0.0) {
-				
-				gl_FragColor = vec4 (0.0, 0.0, 0.0, 0.0);
-				
-			} else if (uColorTransform) {
-				
-				color = vec4 (color.rgb / color.a, color.a);
-				color = vColorOffsets + (color * vColorMultipliers);
-				
-				gl_FragColor = vec4 (color.bgr * color.a * vAlpha, color.a * vAlpha);
-				
-			} else {
-				
-				gl_FragColor = color.bgra * vAlpha;
-				
-			}
-			
-		}"
-		#else
-		"varying float vAlpha;
-		varying mat4 vColorMultipliers;
-		varying vec4 vColorOffsets;
-		varying vec2 vTexCoord;
-		
-		uniform bool uColorTransform;
-		uniform sampler2D uImage0;
-		
-		void main(void) {
-			
-			vec4 color = texture2D (uImage0, vTexCoord);
-			
-			if (color.a == 0.0) {
-				
-				gl_FragColor = vec4 (0.0, 0.0, 0.0, 0.0);
-				
-			} else if (uColorTransform) {
-				
-				color = vec4 (color.rgb / color.a, color.a);
-				color = vColorOffsets + (color * vColorMultipliers);
-				
-				if (color.a > 0.0) {
-					
-					gl_FragColor = vec4 (color.rgb * color.a * vAlpha, color.a * vAlpha);
-					
-				} else {
-					
-					gl_FragColor = vec4 (0.0, 0.0, 0.0, 0.0);
-					
-				}
-				
-			} else {
-				
-				gl_FragColor = color * vAlpha;
-				
-			}
-			
-		}"
-		#end
-		
-	)
-	
-	
-	@:glVertexSource(
-		
-		"attribute float aAlpha;
-		attribute mat4 aColorMultipliers;
-		attribute vec4 aColorOffsets;
-		attribute vec4 aPosition;
-		attribute vec2 aTexCoord;
-		varying float vAlpha;
-		varying mat4 vColorMultipliers;
-		varying vec4 vColorOffsets;
-		varying vec2 vTexCoord;
-		
-		uniform mat4 uMatrix;
-		uniform bool uColorTransform;
-		
-		void main(void) {
-			
-			vAlpha = aAlpha;
-			vTexCoord = aTexCoord;
-			
-			if (uColorTransform) {
-				
-				vColorMultipliers = aColorMultipliers;
-				vColorOffsets = aColorOffsets;
-				
-			}
-			
-			gl_Position = uMatrix * aPosition;
-			
-		}"
-		
-	)
-	
-	
 	public function new (code:ByteArray = null) {
 		
 		byteCode = code;
@@ -179,11 +84,159 @@ class Shader {
 		
 		__glSourceDirty = true;
 		__numPasses = 1;
+		__data = new ShaderData (code);
 		
 	}
 	
 	
-	private function __disable ():Void {
+	@:noCompletion private function __clearUseArray ():Void {
+		
+		for (parameter in __paramBool) {
+			
+			parameter.__useArray = false;
+			
+		}
+		
+		for (parameter in __paramFloat) {
+			
+			parameter.__useArray = false;
+			
+		}
+		
+		for (parameter in __paramInt) {
+			
+			parameter.__useArray = false;
+			
+		}
+		
+	}
+	
+	
+	// private function __clone ():Shader {
+		
+		// var classType = Type.getClass (this);
+		// var shader = Type.createInstance (classType, []);
+		
+		// for (input in __inputBitmapData) {
+			
+		// 	if (input.input != null) {
+				
+		// 		var field = Reflect.field (shader.data, input.name);
+				
+		// 		field.channels = input.channels;
+		// 		field.height = input.height;
+		// 		field.input = input.input;
+		// 		field.smoothing = input.smoothing;
+		// 		field.width = input.width;
+				
+		// 	}
+			
+		// }
+		
+		// for (param in __paramBool) {
+			
+		// 	if (param.value != null) {
+				
+		// 		Reflect.field (shader.data, param.name).value = param.value.copy ();
+				
+		// 	}
+			
+		// }
+		
+		// for (param in __paramFloat) {
+			
+		// 	if (param.value != null) {
+				
+		// 		Reflect.field (shader.data, param.name).value = param.value.copy ();
+				
+		// 	}
+			
+		// }
+		
+		// for (param in __paramInt) {
+			
+		// 	if (param.value != null) {
+				
+		// 		Reflect.field (shader.data, param.name).value = param.value.copy ();
+				
+		// 	}
+			
+		// }
+		
+		// return shader;
+		
+	// }
+	
+	
+	@:noCompletion private function __createGLShader (source:String, type:Int):GLShader {
+		
+		#if (lime >= "7.0.0")
+		var gl = __context.webgl;
+		#else
+		var gl = __context;
+		#end
+		
+		var shader = gl.createShader (type);
+		gl.shaderSource (shader, source);
+		gl.compileShader (shader);
+		
+		if (gl.getShaderParameter (shader, gl.COMPILE_STATUS) == 0) {
+			
+			var message = (type == gl.VERTEX_SHADER) ? "Error compiling vertex shader" : "Error compiling fragment shader";
+			message += "\n" + gl.getShaderInfoLog (shader);
+			message += "\n" + source;
+			Log.error (message);
+			
+		}
+		
+		return shader;
+		
+	}
+	
+	
+	@:noCompletion private function __createGLProgram (vertexSource:String, fragmentSource:String):GLProgram {
+		
+		#if (lime >= "7.0.0")
+		var gl = __context.webgl;
+		#else
+		var gl = __context;
+		#end
+		
+		var vertexShader = __createGLShader (vertexSource, gl.VERTEX_SHADER);
+		var fragmentShader = __createGLShader (fragmentSource, gl.FRAGMENT_SHADER);
+		
+		var program = gl.createProgram ();
+		
+		// Fix support for drivers that don't draw if attribute 0 is disabled
+		for (param in __paramFloat) {
+			
+			if (param.name.indexOf ("Position") > -1 && StringTools.startsWith (param.name, "openfl_")) {
+				
+				gl.bindAttribLocation (program, 0, param.name);
+				break;
+				
+			}
+			
+		}
+		
+		gl.attachShader (program, vertexShader);
+		gl.attachShader (program, fragmentShader);
+		gl.linkProgram (program);
+		
+		if (gl.getProgramParameter (program, gl.LINK_STATUS) == 0) {
+			
+			var message = "Unable to initialize the shader program";
+			message += "\n" + gl.getProgramInfoLog (program);
+			Log.error (message);
+			
+		}
+		
+		return program;
+		
+	}
+	
+	
+	@:noCompletion private function __disable ():Void {
 		
 		if (glProgram != null) {
 			
@@ -194,36 +247,42 @@ class Shader {
 	}
 	
 	
-	private function __disableGL ():Void {
+	@:noCompletion private function __disableGL ():Void {
 		
-		if (data.uImage0 != null) {
+		#if (lime >= "7.0.0")
+		var gl = __context.webgl;
+		#else
+		var gl = __context;
+		#end
+		
+		// if (data.uImage0 != null) {
 			
-			data.uImage0.input = null;
+		// 	data.uImage0.input = null;
 			
-		}
+		// }
 		
 		for (parameter in __paramBool) {
 			
-			gl.disableVertexAttribArray (parameter.index);
+			parameter.__disableGL (__context);
 			
 		}
 		
 		for (parameter in __paramFloat) {
 			
-			gl.disableVertexAttribArray (parameter.index);
+			parameter.__disableGL (__context);
 			
 		}
 		
 		for (parameter in __paramInt) {
 			
-			gl.disableVertexAttribArray (parameter.index);
+			parameter.__disableGL (__context);
 			
 		}
 		
 		gl.bindBuffer (gl.ARRAY_BUFFER, null);
 		gl.bindTexture (gl.TEXTURE_2D, null);
 		
-		if (gl.type == OPENGL) {
+		if (__context.type == OPENGL) {
 			
 			gl.disable (gl.TEXTURE_2D);
 			
@@ -232,7 +291,7 @@ class Shader {
 	}
 	
 	
-	private function __enable ():Void {
+	@:noCompletion private function __enable ():Void {
 		
 		__init ();
 		
@@ -245,18 +304,28 @@ class Shader {
 	}
 	
 	
-	private function __enableGL ():Void {
+	@:noCompletion private function __enableGL ():Void {
 		
 		var textureCount = 0;
 		
+		#if (lime >= "7.0.0")
+		var gl = __context.webgl;
+		#else
+		var gl = __context;
+		#end
+		
 		for (input in __inputBitmapData) {
 			
-			gl.uniform1i (input.index, textureCount);
-			textureCount++;
+			if (input.input != null) {
+				
+				gl.uniform1i (input.index, textureCount);
+				textureCount++;
+				
+			}
 			
 		}
 		
-		if (gl.type == OPENGL && textureCount > 0) {
+		if (__context.type == OPENGL && textureCount > 0) {
 			
 			gl.enable (gl.TEXTURE_2D);
 			
@@ -265,7 +334,7 @@ class Shader {
 	}
 	
 	
-	private function __init ():Void {
+	@:noCompletion private function __init ():Void {
 		
 		if (__data == null) {
 			
@@ -282,23 +351,17 @@ class Shader {
 	}
 	
 	
-	private function __initGL ():Void {
+	@:noCompletion private function __initGL ():Void {
 		
-		if (__glSourceDirty || __isUniform == null) {
+		if (__glSourceDirty || __paramBool == null) {
 			
 			__glSourceDirty = false;
 			glProgram = null;
-			
-			__isUniform = new Map ();
 			
 			__inputBitmapData = new Array ();
 			__paramBool = new Array ();
 			__paramFloat = new Array ();
 			__paramInt = new Array ();
-			
-			__uniformMatrix2 = new Float32Array (4);
-			__uniformMatrix3 = new Float32Array (9);
-			__uniformMatrix4 = new Float32Array (16);
 			
 			__processGLData (glVertexSource, "attribute");
 			__processGLData (glVertexSource, "uniform");
@@ -306,22 +369,42 @@ class Shader {
 			
 		}
 		
-		if (gl != null && glProgram == null) {
+		if (__context != null && glProgram == null) {
 			
-			var fragment = 
+			#if (lime >= "7.0.0")
+			var gl = __context.webgl;
+			#else
+			var gl = __context;
+			#end
+			
+			var prefix = 
 				
 				"#ifdef GL_ES
 				precision " + (precisionHint == FULL ? "mediump" : "lowp") + " float;
 				#endif
-				" + glFragmentSource;
+				";
 			
-			glProgram = GLUtils.createProgram (glVertexSource, fragment);
+			var vertex = prefix + glVertexSource;
+			var fragment = prefix + glFragmentSource;
+			
+			var id = vertex + fragment;
+			
+			if (__glPrograms.exists (id)) {
+				
+				glProgram = __glPrograms.get (id);
+				
+			} else {
+				
+				glProgram = __createGLProgram (vertex, fragment);
+				__glPrograms.set (id, glProgram);
+				
+			}
 			
 			if (glProgram != null) {
 				
 				for (input in __inputBitmapData) {
 					
-					if (__isUniform.get (input.name)) {
+					if (input.__isUniform) {
 						
 						input.index = gl.getUniformLocation (glProgram, input.name);
 						
@@ -335,7 +418,7 @@ class Shader {
 				
 				for (parameter in __paramBool) {
 					
-					if (__isUniform.get (parameter.name)) {
+					if (parameter.__isUniform) {
 						
 						parameter.index = gl.getUniformLocation (glProgram, parameter.name);
 						
@@ -349,7 +432,7 @@ class Shader {
 				
 				for (parameter in __paramFloat) {
 					
-					if (__isUniform.get (parameter.name)) {
+					if (parameter.__isUniform) {
 						
 						parameter.index = gl.getUniformLocation (glProgram, parameter.name);
 						
@@ -363,7 +446,7 @@ class Shader {
 				
 				for (parameter in __paramInt) {
 					
-					if (__isUniform.get (parameter.name)) {
+					if (parameter.__isUniform) {
 						
 						parameter.index = gl.getUniformLocation (glProgram, parameter.name);
 						
@@ -382,17 +465,17 @@ class Shader {
 	}
 	
 	
-	private function __processGLData (source:String, storageType:String):Void {
+	@:noCompletion private function __processGLData (source:String, storageType:String):Void {
 		
 		var lastMatch = 0, position, regex, name, type;
 		
 		if (storageType == "uniform") {
 			
-			regex = ~/uniform ([A-Za-z0-9]+) ([A-Za-z0-9]+)/;
+			regex = ~/uniform ([A-Za-z0-9]+) ([A-Za-z0-9_]+)/;
 			
 		} else {
 			
-			regex = ~/attribute ([A-Za-z0-9]+) ([A-Za-z0-9]+)/;
+			regex = ~/attribute ([A-Za-z0-9]+) ([A-Za-z0-9_]+)/;
 			
 		}
 		
@@ -401,14 +484,33 @@ class Shader {
 			type = regex.matched (1);
 			name = regex.matched (2);
 			
+			if (StringTools.startsWith (name, "gl_")) {
+				
+				continue;
+				
+			}
+			
+			var isUniform = (storageType == "uniform");
+			
 			if (StringTools.startsWith (type, "sampler")) {
 				
 				var input = new ShaderInput<BitmapData> ();
 				input.name = name;
+				input.__isUniform = isUniform;
 				__inputBitmapData.push (input);
-				Reflect.setField (data, name, input);
 				
-			} else {
+				switch (name) {
+					
+					case "openfl_Texture": __texture = input;
+					case "bitmap": __bitmap = input;
+					default:
+					
+				}
+				
+				Reflect.setField (__data, name, input);
+				if (__isGenerated) Reflect.setField (this, name, input);
+				
+			} else if (!Reflect.hasField (__data, name) || Reflect.field (__data, name) == null) {
 				
 				var parameterType:ShaderParameterType = switch (type) {
 					
@@ -437,6 +539,26 @@ class Shader {
 					
 				}
 				
+				var length = switch (parameterType) {
+					
+					case BOOL2, INT2, FLOAT2: 2;
+					case BOOL3, INT3, FLOAT3: 3;
+					case BOOL4, INT4, FLOAT4, MATRIX2X2: 4;
+					case MATRIX3X3: 9;
+					case MATRIX4X4: 16;
+					default: 1;
+					
+				}
+				
+				var arrayLength = switch (parameterType) {
+					
+					case MATRIX2X2: 2;
+					case MATRIX3X3: 3;
+					case MATRIX4X4: 4;
+					default: 1;
+					
+				}
+				
 				switch (parameterType) {
 					
 					case BOOL, BOOL2, BOOL3, BOOL4:
@@ -444,30 +566,69 @@ class Shader {
 						var parameter = new ShaderParameter<Bool> ();
 						parameter.name = name;
 						parameter.type = parameterType;
+						parameter.__arrayLength = arrayLength;
+						parameter.__isBool = true;
+						parameter.__isUniform = isUniform;
+						parameter.__length = length;
 						__paramBool.push (parameter);
-						Reflect.setField (data, name, parameter);
+						
+						if (name == "openfl_HasColorTransform") {
+							
+							__hasColorTransform = parameter;
+							
+						}
+						
+						Reflect.setField (__data, name, parameter);
+						if (__isGenerated) Reflect.setField (this, name, parameter);
 					
 					case INT, INT2, INT3, INT4:
 						
 						var parameter = new ShaderParameter<Int> ();
 						parameter.name = name;
 						parameter.type = parameterType;
+						parameter.__arrayLength = arrayLength;
+						parameter.__isInt = true;
+						parameter.__isUniform = isUniform;
+						parameter.__length = length;
 						__paramInt.push (parameter);
-						Reflect.setField (data, name, parameter);
+						Reflect.setField (__data, name, parameter);
+						if (__isGenerated) Reflect.setField (this, name, parameter);
 					
 					default:
 						
 						var parameter = new ShaderParameter<Float> ();
 						parameter.name = name;
 						parameter.type = parameterType;
+						parameter.__arrayLength = arrayLength;
+						if (arrayLength > 0) parameter.__uniformMatrix = new Float32Array (arrayLength * arrayLength);
+						parameter.__isFloat = true;
+						parameter.__isUniform = isUniform;
+						parameter.__length = length;
 						__paramFloat.push (parameter);
-						Reflect.setField (data, name, parameter);
+						
+						if (StringTools.startsWith (name, "openfl_")) {
+							
+							switch (name) {
+								
+								case "openfl_Alpha": __alpha = parameter;
+								case "openfl_ColorMultiplier": __colorMultiplier = parameter;
+								case "openfl_ColorOffset": __colorOffset = parameter;
+								case "openfl_Matrix": __matrix = parameter;
+								case "openfl_Position": __position = parameter;
+								case "openfl_TextureCoord": __textureCoord = parameter;
+								case "openfl_TextureSize": __textureSize = parameter;
+								default:
+								
+							}
+							
+						}
+						
+						Reflect.setField (__data, name, parameter);
+						if (__isGenerated) Reflect.setField (this, name, parameter);
 					
 				}
 				
 			}
-			
-			__isUniform.set (name, storageType == "uniform");
 			
 			position = regex.matchedPos ();
 			lastMatch = position.pos + position.len;
@@ -477,7 +638,7 @@ class Shader {
 	}
 	
 	
-	private function __update ():Void {
+	@:noCompletion private function __update ():Void {
 		
 		if (glProgram != null) {
 			
@@ -488,7 +649,18 @@ class Shader {
 	}
 	
 	
-	private function __updateGL ():Void {
+	@:noCompletion private function __updateFromBuffer (shaderBuffer:ShaderBuffer):Void {
+		
+		if (glProgram != null) {
+			
+			__updateGLFromBuffer (shaderBuffer);
+			
+		}
+		
+	}
+	
+	
+	@:noCompletion private function __updateGL ():Void {
 		
 		var textureCount = 0;
 		
@@ -496,198 +668,181 @@ class Shader {
 			
 			if (input.input != null) {
 				
-				gl.activeTexture (gl.TEXTURE0 + textureCount);
-				gl.bindTexture (gl.TEXTURE_2D, input.input.getTexture (gl));
-				
-				if (input.smoothing) {
-					
-					gl.texParameteri (gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-					gl.texParameteri (gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-					
-				} else {
-					
-					gl.texParameteri (gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-					gl.texParameteri (gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-					
-				}
+				input.__updateGL (__context, textureCount);
+				textureCount++;
 				
 			}
 			
-			textureCount++;
-			
 		}
-		
-		var value, index;
 		
 		for (parameter in __paramBool) {
 			
-			value = parameter.value;
-			index = parameter.index;
-			
-			if (value != null) {
-				
-				switch (parameter.type) {
-					
-					case BOOL:
-						
-						gl.uniform1i (index, value[0] ? 1 : 0);
-					
-					case BOOL2:
-						
-						gl.uniform2i (index, value[0] ? 1 : 0, value[1] ? 1 : 0);
-					
-					case BOOL3:
-						
-						gl.uniform3i (index, value[0] ? 1 : 0, value[1] ? 1 : 0, value[2] ? 1 : 0);
-					
-					case BOOL4:
-						
-						gl.uniform4i (index, value[0] ? 1 : 0, value[1] ? 1 : 0, value[2] ? 1 : 0, value[3] ? 1 : 0);
-					
-					default:
-					
-				}
-				
-			} else if (!__isUniform.get (parameter.name)) {
-				
-				gl.enableVertexAttribArray (parameter.index);
-				
-			}
+			parameter.__updateGL (__context);
 			
 		}
-		
-		var value, index;
 		
 		for (parameter in __paramFloat) {
 			
-			value = parameter.value;
-			index = parameter.index;
+			parameter.__updateGL (__context);
 			
-			if (value != null) {
+		}
+		
+		for (parameter in __paramInt) {
+			
+			parameter.__updateGL (__context);
+			
+		}
+		
+	}
+	
+	
+	@:noCompletion private function __updateGLFromBuffer (shaderBuffer:ShaderBuffer):Void {
+		
+		var textureCount = 0;
+		var input, inputData, inputFilter, inputMipFilter, inputWrap;
+		
+		for (i in 0...shaderBuffer.inputCount) {
+			
+			input = shaderBuffer.inputRefs[i];
+			inputData = shaderBuffer.inputs[i];
+			inputFilter = shaderBuffer.inputFilter[i];
+			inputMipFilter = shaderBuffer.inputMipFilter[i];
+			inputWrap = shaderBuffer.inputWrap[i];
+			
+			if (inputData != null) {
 				
-				switch (parameter.type) {
-					
-					case FLOAT:
-						
-						gl.uniform1f (index, value[0]);
-					
-					case FLOAT2:
-						
-						gl.uniform2f (index, value[0], value[1]);
-					
-					case FLOAT3:
-						
-						gl.uniform3f (index, value[0], value[1], value[2]);
-					
-					case FLOAT4:
-						
-						gl.uniform4f (index, value[0], value[1], value[2], value[3]);
-					
-					case MATRIX2X2:
-						
-						for (i in 0...4) {
-							
-							__uniformMatrix2[i] = value[i];
-							
-						}
-						
-						gl.uniformMatrix2fv (index, 1, false, __uniformMatrix2);
-					
-					//case MATRIX2X3:
-					//case MATRIX2X4:
-					//case MATRIX3X2:
-					
-					case MATRIX3X3:
-						
-						for (i in 0...9) {
-							
-							__uniformMatrix3[i] = value[i];
-							
-						}
-						
-						gl.uniformMatrix3fv (index, 1, false, __uniformMatrix3);
-					
-					//case MATRIX3X4:
-					//case MATRIX4X2:
-					//case MATRIX4X3:
-					
-					case MATRIX4X4:
-						
-						for (i in 0...16) {
-							
-							__uniformMatrix4[i] = value[i];
-							
-						}
-						
-						gl.uniformMatrix4fv (index, 1, false, __uniformMatrix4);
-					
-					default:
-					
-				}
-				
-			} else if (!__isUniform.get (parameter.name)) {
-				
-				gl.enableVertexAttribArray (parameter.index);
-				
-				switch (parameter.type) {
-					
-					case MATRIX2X2:
-						
-						gl.enableVertexAttribArray (parameter.index + 1);
-					
-					case MATRIX3X3:
-						
-						gl.enableVertexAttribArray (parameter.index + 1);
-						gl.enableVertexAttribArray (parameter.index + 2);
-					
-					case MATRIX4X4:
-						
-						gl.enableVertexAttribArray (parameter.index + 1);
-						gl.enableVertexAttribArray (parameter.index + 2);
-						gl.enableVertexAttribArray (parameter.index + 3);
-					
-					default:
-					
-				}
+				input.__updateGL (__context, textureCount, inputData, inputFilter, inputMipFilter, inputWrap);
+				textureCount++;
 				
 			}
 			
 		}
 		
-		var value, index;
+		#if (lime >= "7.0.0")
+		var gl = __context.webgl;
+		#else
+		var gl:WebGLContext = __context;
+		#end
 		
-		for (parameter in __paramInt) {
+		if (shaderBuffer.paramDataLength > 0) {
 			
-			value = parameter.value;
-			index = parameter.index;
-			
-			if (value != null) {
+			if (shaderBuffer.paramDataBuffer == null) {
 				
-				switch (parameter.type) {
+				shaderBuffer.paramDataBuffer = gl.createBuffer ();
+				
+			}
+			
+			//Log.verbose ("bind param data buffer (length: " + shaderBuffer.paramData.length + ") (" + shaderBuffer.paramCount + ")");
+			
+			gl.bindBuffer (gl.ARRAY_BUFFER, shaderBuffer.paramDataBuffer);
+			gl.bufferData (gl.ARRAY_BUFFER, shaderBuffer.paramData, gl.DYNAMIC_DRAW);
+			
+		} else {
+			
+			//Log.verbose ("bind buffer null");
+			
+			gl.bindBuffer (gl.ARRAY_BUFFER, null);
+			
+		}
+		
+		var boolIndex = 0;
+		var floatIndex = 0;
+		var intIndex = 0;
+		
+		var boolCount = shaderBuffer.paramBoolCount;
+		var floatCount = shaderBuffer.paramFloatCount;
+		var paramData = shaderBuffer.paramData;
+		
+		var boolRef, floatRef, intRef, hasOverride;
+		var overrideBoolValue:Array<Bool> = null, overrideFloatValue:Array<Float> = null, overrideIntValue:Array<Int> = null;
+		
+		for (i in 0...shaderBuffer.paramCount) {
+			
+			hasOverride = false;
+			
+			if (i < boolCount) {
+				
+				boolRef = shaderBuffer.paramRefs_Bool[boolIndex];
+				
+				for (j in 0...shaderBuffer.overrideCount) {
 					
-					case INT:
+					if (boolRef.name == shaderBuffer.overrideNames[j]) {
 						
-						gl.uniform1i (index, value[0]);
-					
-					case INT2:
+						overrideBoolValue = cast shaderBuffer.overrideValues[j];
+						hasOverride = true;
+						break;
 						
-						gl.uniform2i (index, value[0], value[1]);
-					
-					case INT3:
-						
-						gl.uniform3i (index, value[0], value[1], value[2]);
-					
-					case INT4:
-						
-						gl.uniform4i (index, value[0], value[1], value[2], value[3]);
-					
-					default:
+					}
 					
 				}
 				
-			} else if (!__isUniform.get (parameter.name)) {
+				if (hasOverride) {
+					
+					boolRef.__updateGL (__context, overrideBoolValue);
+					
+				} else {
+					
+					boolRef.__updateGLFromBuffer (__context, paramData, shaderBuffer.paramPositions[i], shaderBuffer.paramLengths[i]);
+					
+				}
 				
-				gl.enableVertexAttribArray (parameter.index);
+				boolIndex++;
+				
+			} else if (i < boolCount + floatCount) {
+				
+				floatRef = shaderBuffer.paramRefs_Float[floatIndex];
+				
+				for (j in 0...shaderBuffer.overrideCount) {
+					
+					if (floatRef.name == shaderBuffer.overrideNames[j]) {
+						
+						overrideFloatValue = cast shaderBuffer.overrideValues[j];
+						hasOverride = true;
+						break;
+						
+					}
+					
+				}
+				
+				if (hasOverride) {
+					
+					floatRef.__updateGL (__context, overrideFloatValue);
+					
+				} else {
+					
+					floatRef.__updateGLFromBuffer (__context, paramData, shaderBuffer.paramPositions[i], shaderBuffer.paramLengths[i]);
+					
+				}
+				
+				floatIndex++;
+				
+			} else {
+				
+				intRef = shaderBuffer.paramRefs_Int[intIndex];
+				
+				for (j in 0...shaderBuffer.overrideCount) {
+					
+					if (intRef.name == shaderBuffer.overrideNames[j]) {
+						
+						overrideIntValue = cast shaderBuffer.overrideValues[j];
+						hasOverride = true;
+						break;
+						
+					}
+					
+				}
+				
+				if (hasOverride) {
+					
+					intRef.__updateGL (__context, overrideIntValue);
+					
+				} else {
+					
+					intRef.__updateGLFromBuffer (__context, paramData, shaderBuffer.paramPositions[i], shaderBuffer.paramLengths[i]);
+					
+				}
+				
+				intIndex++;
 				
 			}
 			
@@ -703,7 +858,7 @@ class Shader {
 	
 	
 	
-	private function get_data ():ShaderData {
+	@:noCompletion private function get_data ():ShaderData {
 		
 		if (__glSourceDirty || __data == null) {
 			
@@ -716,21 +871,21 @@ class Shader {
 	}
 	
 	
-	private function set_data (value:ShaderData):ShaderData {
+	@:noCompletion private function set_data (value:ShaderData):ShaderData {
 		
 		return __data = cast value;
 		
 	}
 	
 	
-	private function get_glFragmentSource ():String {
+	@:noCompletion private function get_glFragmentSource ():String {
 		
 		return __glFragmentSource;
 		
 	}
 	
 	
-	private function set_glFragmentSource (value:String):String {
+	@:noCompletion private function set_glFragmentSource (value:String):String {
 		
 		if (value != __glFragmentSource) {
 			
@@ -743,14 +898,14 @@ class Shader {
 	}
 	
 	
-	private function get_glVertexSource ():String {
+	@:noCompletion private function get_glVertexSource ():String {
 		
 		return __glVertexSource;
 		
 	}
 	
 	
-	private function set_glVertexSource (value:String):String {
+	@:noCompletion private function set_glVertexSource (value:String):String {
 		
 		if (value != __glVertexSource) {
 			
@@ -764,3 +919,8 @@ class Shader {
 	
 	
 }
+
+
+#else
+typedef Shader = flash.display.Shader;
+#end

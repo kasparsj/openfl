@@ -1,4 +1,4 @@
-package openfl.net;
+package openfl.net; #if !flash
 
 
 import openfl.events.EventDispatcher;
@@ -10,21 +10,35 @@ import openfl.utils.IDataInput;
 import openfl.utils.ByteArray;
 import openfl.utils.Endian;
 
+#if !openfl_debug
+@:fileXml('tags="haxe,release"')
+@:noDebug
+#end
+
 
 class URLStream extends EventDispatcher implements IDataInput {
 	
 	
 	public var bytesAvailable (get, never):UInt;
 	public var connected (get, never):Bool;
-	public var endian (get, set):Endian;
-	public var objectEncoding:UInt;
 	
-	private var __data:ByteArray;
-	private var __loader:URLLoader;
+	// @:require(flash11_4) public var diskCacheEnabled (default, null):Bool;
+	
+	public var endian (get, set):Endian;
+	
+	// @:require(flash11_4) public var length (default, null):Float;
+	
+	public var objectEncoding:ObjectEncoding;
+	
+	// @:require(flash11_4) public var position:Float;
+	
+	
+	@:noCompletion private var __data:ByteArray;
+	@:noCompletion private var __loader:URLLoader;
 	
 	
 	#if openfljs
-	private static function __init__ () {
+	@:noCompletion private static function __init__ () {
 		
 		untyped Object.defineProperties (URLStream.prototype, {
 			"bytesAvailable": { get: untyped __js__ ("function () { return this.get_bytesAvailable (); }") },
@@ -162,7 +176,10 @@ class URLStream extends EventDispatcher implements IDataInput {
 	}
 	
 	
-	private function __addEventListeners ():Void {
+	// @:require(flash11_4) public function stop ():Void;
+	
+	
+	@:noCompletion private function __addEventListeners ():Void {
 		
 		__loader.addEventListener (Event.COMPLETE, loader_onComplete);
 		__loader.addEventListener (IOErrorEvent.IO_ERROR, loader_onIOError);
@@ -172,7 +189,7 @@ class URLStream extends EventDispatcher implements IDataInput {
 	}
 	
 	
-	private function __removeEventListeners ():Void {
+	@:noCompletion private function __removeEventListeners ():Void {
 		
 		__loader.removeEventListener (Event.COMPLETE, loader_onComplete);
 		__loader.removeEventListener (IOErrorEvent.IO_ERROR, loader_onIOError);
@@ -189,7 +206,7 @@ class URLStream extends EventDispatcher implements IDataInput {
 	
 	
 	
-	private function loader_onComplete (event:Event):Void {
+	@:noCompletion private function loader_onComplete (event:Event):Void {
 		
 		__removeEventListeners ();
 		__data = __loader.data;
@@ -200,7 +217,7 @@ class URLStream extends EventDispatcher implements IDataInput {
 	}
 	
 	
-	private function loader_onIOError (event:IOErrorEvent):Void {
+	@:noCompletion private function loader_onIOError (event:IOErrorEvent):Void {
 		
 		__removeEventListeners ();
 		
@@ -209,7 +226,7 @@ class URLStream extends EventDispatcher implements IDataInput {
 	}
 	
 	
-	private function loader_onSecurityError (event:SecurityErrorEvent):Void {
+	@:noCompletion private function loader_onSecurityError (event:SecurityErrorEvent):Void {
 		
 		__removeEventListeners ();
 		
@@ -218,7 +235,7 @@ class URLStream extends EventDispatcher implements IDataInput {
 	}
 	
 	
-	private function loader_onProgressEvent (event:ProgressEvent):Void {
+	@:noCompletion private function loader_onProgressEvent (event:ProgressEvent):Void {
 		
 		__data = __loader.data;
 		dispatchEvent (event);
@@ -268,3 +285,8 @@ class URLStream extends EventDispatcher implements IDataInput {
 	
 	
 }
+
+
+#else
+typedef URLStream = flash.net.URLStream;
+#end

@@ -6,6 +6,11 @@ import openfl.display.BitmapData;
 import openfl.media.Sound;
 import openfl.text.Font;
 
+#if !openfl_debug
+@:fileXml('tags="haxe,release"')
+@:noDebug
+#end
+
 
 @:dox(hide) class AssetCache implements IAssetCache {
 	
@@ -16,11 +21,11 @@ import openfl.text.Font;
 	/* deprecated */ @:dox(hide) public var font:Map<String, Font>;
 	/* deprecated */ @:dox(hide) public var sound:Map<String, Sound>;
 	
-	private var __enabled = true;
+	@:noCompletion private var __enabled = true;
 	
 	
 	#if openfljs
-	private static function __init__ () {
+	@:noCompletion private static function __init__ () {
 		
 		untyped global.Object.defineProperty (AssetCache.prototype, "enabled", { get: untyped __js__ ("function () { return this.get_enabled (); }"), set: untyped __js__ ("function (v) { return this.set_enabled (v); }") });
 		
@@ -182,14 +187,14 @@ import openfl.text.Font;
 	
 	
 	
-	private function get_enabled ():Bool {
+	@:noCompletion private function get_enabled ():Bool {
 		
 		return __enabled;
 		
 	}
 	
 	
-	private function set_enabled (value:Bool):Bool {
+	@:noCompletion private function set_enabled (value:Bool):Bool {
 		
 		return __enabled = value;
 		

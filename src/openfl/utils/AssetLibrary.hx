@@ -10,11 +10,16 @@ import lime.utils.AssetManifest;
 import lime.utils.Bytes;
 import openfl.display.MovieClip;
 
+#if !openfl_debug
+@:fileXml('tags="haxe,release"')
+@:noDebug
+#end
+
 
 @:dox(hide) class AssetLibrary extends LimeAssetLibrary {
 	
 	
-	private var __proxy:LimeAssetLibrary;
+	@:noCompletion private var __proxy:LimeAssetLibrary;
 	
 	
 	public function new () {

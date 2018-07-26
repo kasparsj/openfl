@@ -1,18 +1,54 @@
-package openfl.display;
+package openfl.display; #if !flash
 
 
 import openfl._internal.renderer.cairo.CairoBitmap;
+import openfl._internal.renderer.cairo.CairoDisplayObject;
 import openfl._internal.renderer.canvas.CanvasBitmap;
+import openfl._internal.renderer.canvas.CanvasDisplayObject;
 import openfl._internal.renderer.dom.DOMBitmap;
+import openfl._internal.renderer.dom.DOMDisplayObject;
 import openfl._internal.renderer.opengl.GLBitmap;
-import openfl._internal.renderer.RenderSession;
+import openfl._internal.renderer.opengl.GLDisplayObject;
 import openfl.geom.Matrix;
-import openfl.geom.Point;
 import openfl.geom.Rectangle;
 
 #if (js && html5)
 import js.html.ImageElement;
 #end
+
+
+/**
+ * The Bitmap class represents display objects that represent bitmap images.
+ * These can be images that you load with the `openfl.Assets` or 
+ * `openfl.display.Loader` classes, or they can be images that you 
+ * create with the `Bitmap()` constructor.
+ *
+ * The `Bitmap()` constructor allows you to create a Bitmap
+ * object that contains a reference to a BitmapData object. After you create a
+ * Bitmap object, use the `addChild()` or `addChildAt()`
+ * method of the parent DisplayObjectContainer instance to place the bitmap on
+ * the display list.
+ *
+ * A Bitmap object can share its BitmapData reference among several Bitmap
+ * objects, independent of translation or rotation properties. Because you can
+ * create multiple Bitmap objects that reference the same BitmapData object,
+ * multiple display objects can use the same complex BitmapData object without
+ * incurring the memory overhead of a BitmapData object for each display
+ * object instance.
+ *
+ * A BitmapData object can be drawn to the screen by a Bitmap object in one
+ * of two ways: by using the default hardware renderer with a single hardware surface, 
+ * or by using the slower software renderer when 3D acceleration is not available.
+ * 
+ * If you would prefer to perform a batch rendering command, rather than using a
+ * single surface for each Bitmap object, you can also draw to the screen using the
+ * `openfl.display.Tilemap` class.
+ *
+ * **Note:** The Bitmap class is not a subclass of the InteractiveObject
+ * class, so it cannot dispatch mouse events. However, you can use the
+ * `addEventListener()` method of the display object container that
+ * contains the Bitmap object.
+ */
 
 #if !openfl_debug
 @:fileXml('tags="haxe,release"')
@@ -25,24 +61,49 @@ import js.html.ImageElement;
 @:access(openfl.geom.Rectangle)
 
 
-class Bitmap extends DisplayObject implements IShaderDrawable {
+class Bitmap extends DisplayObject {
 	
 	
+	/**
+	 * The BitmapData object being referenced.
+	 */
 	public var bitmapData (get, set):BitmapData;
+	
+	/**
+	 * Controls whether or not the Bitmap object is snapped to the nearest pixel.
+	 * This value is ignored in the native and HTML5 targets.
+	 * The PixelSnapping class includes possible values:
+	 * 
+	 *  * `PixelSnapping.NEVER` - No pixel snapping occurs.
+	 *  * `PixelSnapping.ALWAYS` - The image is always snapped to
+	 * the nearest pixel, independent of transformation.
+	 *  * `PixelSnapping.AUTO` - The image is snapped to the
+	 * nearest pixel if it is drawn with no rotation or skew and it is drawn at a
+	 * scale factor of 99.9% to 100.1%. If these conditions are satisfied, the
+	 * bitmap image is drawn at 100% scale, snapped to the nearest pixel.
+	 * When targeting Flash Player, this value allows the image to be drawn as fast 
+	 * as possible using the internal vector renderer.
+	 * 
+	 */
 	public var pixelSnapping:PixelSnapping;
-	@:beta public var shader:Shader;
+	
+	/**
+	 * Controls whether or not the bitmap is smoothed when scaled. If
+	 * `true`, the bitmap is smoothed when scaled. If
+	 * `false`, the bitmap is not smoothed when scaled.
+	 */
 	public var smoothing:Bool;
 	
 	#if (js && html5)
-	private var __image:ImageElement;
+	@:noCompletion private var __image:ImageElement;
 	#end
 	
-	private var __bitmapData:BitmapData;
-	private var __imageVersion:Int;
+	@:noCompletion private var __bitmapData:BitmapData;
+	@:noCompletion private var __imageVersion:Int;
 	
 	
 	#if openfljs
-	private static function __init__ () {
+	@:noCompletion private static function __init__ () {
 		
 		untyped Object.defineProperty (Bitmap.prototype, "bitmapData", { get: untyped __js__ ("function () { return this.get_bitmapData (); }"), set: untyped __js__ ("function (v) { return this.set_bitmapData (v); }") });
 		
@@ -67,26 +128,18 @@ class Bitmap extends DisplayObject implements IShaderDrawable {
 	}
 	
 	
-	private override function __enterFrame (deltaTime:Int):Void {
+	@:noCompletion private override function __enterFrame (deltaTime:Int):Void {
 		
-		// TODO: Do not set as dirty for DOM render
-		
-		// #if (!js || !dom)
-		if (__bitmapData != null && __bitmapData.image != null) {
+		if (__bitmapData != null && __bitmapData.image != null && __bitmapData.image.version != __imageVersion) {
 			
-			var image = __bitmapData.image;
-			if (__bitmapData.image.version != __imageVersion) {
-				__setRenderDirty ();
-				__imageVersion = image.version;
-			}
+			__setRenderDirty ();
 			
 		}
-		// #end
 		
 	}
 	
 	
-	private override function __getBounds (rect:Rectangle, matrix:Matrix):Void {
+	@:noCompletion private override function __getBounds (rect:Rectangle, matrix:Matrix):Void {
 		
 		if (__bitmapData != null) {
 			
@@ -103,7 +156,7 @@ class Bitmap extends DisplayObject implements IShaderDrawable {
 	}
 	
 	
-	private override function __hitTest (x:Float, y:Float, shapeFlag:Bool, stack:Array<DisplayObject>, interactiveOnly:Bool, hitObject:DisplayObject):Bool {
+	@:noCompletion private override function __hitTest (x:Float, y:Float, shapeFlag:Bool, stack:Array<DisplayObject>, interactiveOnly:Bool, hitObject:DisplayObject):Bool {
 		
 		if (!hitObject.visible || __isMask || __bitmapData == null) return false;
 		if (mask != null && !mask.__hitTestMask (x, y)) return false;
@@ -136,7 +189,7 @@ class Bitmap extends DisplayObject implements IShaderDrawable {
 	}
 	
 	
-	private override function __hitTestMask (x:Float, y:Float):Bool {
+	@:noCompletion private override function __hitTestMask (x:Float, y:Float):Bool {
 		
 		if (__bitmapData == null) return false;
 		
@@ -156,146 +209,143 @@ class Bitmap extends DisplayObject implements IShaderDrawable {
 	}
 	
 	
-	private override function __renderCairo (renderSession:RenderSession):Void {
+	@:noCompletion private override function __renderCairo (renderer:CairoRenderer):Void {
+		
+		if (__bitmapData != null && __bitmapData.image != null) {
+			
+			__imageVersion = __bitmapData.image.version;
+			
+		}
 		
 		#if lime_cairo
-		__updateCacheBitmap (renderSession, !__worldColorTransform.__isDefault ());
+		__updateCacheBitmap (renderer, /*!__worldColorTransform.__isDefault ()*/ false);
 		
-		if (__cacheBitmap != null && !__cacheBitmapRender) {
+		if (__cacheBitmap != null && !__isCacheBitmapRender) {
 			
-			CairoBitmap.render (__cacheBitmap, renderSession);
+			CairoBitmap.render (__cacheBitmap, renderer);
 			
 		} else {
 			
-			CairoBitmap.render (this, renderSession);
+			CairoDisplayObject.render (this, renderer);
+			CairoBitmap.render (this, renderer);
 			
 		}
+		
+		__renderEvent (renderer);
 		#end
 		
 	}
 	
 	
-	private override function __renderCairoMask (renderSession:RenderSession):Void {
+	@:noCompletion private override function __renderCairoMask (renderer:CairoRenderer):Void {
 		
-		renderSession.cairo.rectangle (0, 0, width, height);
+		renderer.cairo.rectangle (0, 0, width, height);
 		
 	}
 	
 	
-	private override function __renderCanvas (renderSession:RenderSession):Void {
+	@:noCompletion private override function __renderCanvas (renderer:CanvasRenderer):Void {
 		
-		__updateCacheBitmap (renderSession, !__worldColorTransform.__isDefault ());
-		
-		if (__cacheBitmap != null && !__cacheBitmapRender) {
+		if (__bitmapData != null && __bitmapData.image != null) {
 			
-			CanvasBitmap.render (__cacheBitmap, renderSession);
-			
-		} else {
-			
-			CanvasBitmap.render (this, renderSession);
+			__imageVersion = __bitmapData.image.version;
 			
 		}
 		
-	}
-	
-	
-	private override function __renderCanvasMask (renderSession:RenderSession):Void {
+		__updateCacheBitmap (renderer, /*!__worldColorTransform.__isDefault ()*/ false);
 		
-		renderSession.context.rect (0, 0, width, height);
-		
-	}
-	
-	
-	private override function __renderDOM (renderSession:RenderSession):Void {
-		
-		__updateCacheBitmap (renderSession, !__worldColorTransform.__isDefault ());
-		
-		if (__cacheBitmap != null && !__cacheBitmapRender) {
+		if (__cacheBitmap != null && !__isCacheBitmapRender) {
 			
-			__renderDOMClear (renderSession);
+			CanvasBitmap.render (__cacheBitmap, renderer);
+			
+		} else {
+			
+			CanvasDisplayObject.render (this, renderer);
+			CanvasBitmap.render (this, renderer);
+			
+		}
+		
+		__renderEvent (renderer);
+		
+	}
+	
+	
+	@:noCompletion private override function __renderCanvasMask (renderer:CanvasRenderer):Void {
+		
+		renderer.context.rect (0, 0, width, height);
+		
+	}
+	
+	
+	@:noCompletion private override function __renderDOM (renderer:DOMRenderer):Void {
+		
+		__updateCacheBitmap (renderer, /*!__worldColorTransform.__isDefault ()*/ false);
+		
+		if (__cacheBitmap != null && !__isCacheBitmapRender) {
+			
+			__renderDOMClear (renderer);
 			__cacheBitmap.stage = stage;
 			
-			DOMBitmap.render (__cacheBitmap, renderSession);
+			DOMBitmap.render (__cacheBitmap, renderer);
 			
 		} else {
 			
-			DOMBitmap.render (this, renderSession);
+			DOMDisplayObject.render (this, renderer);
+			DOMBitmap.render (this, renderer);
 			
 		}
 		
-	}
-	
-	
-	private override function __renderDOMClear (renderSession: RenderSession):Void {
-		
-		DOMBitmap.clear (this, renderSession);
+		__renderEvent (renderer);
 		
 	}
 	
 	
-	private override function __renderGL (renderSession:RenderSession):Void {
+	@:noCompletion private override function __renderDOMClear (renderer:DOMRenderer):Void {
 		
-		__updateCacheBitmap (renderSession, false);
+		DOMBitmap.clear (this, renderer);
 		
-		if (__cacheBitmap != null && !__cacheBitmapRender) {
+	}
+	
+	
+	@:noCompletion private override function __renderGL (renderer:OpenGLRenderer):Void {
+		
+		if (__bitmapData != null && __bitmapData.image != null) {
 			
-			GLBitmap.render (__cacheBitmap, renderSession);
+			__imageVersion = __bitmapData.image.version;
+			
+		}
+		
+		__updateCacheBitmap (renderer, false);
+		
+		if (__cacheBitmap != null && !__isCacheBitmapRender) {
+			
+			GLBitmap.render (__cacheBitmap, renderer);
 			
 		} else {
 			
-			GLBitmap.render (this, renderSession);
+			GLDisplayObject.render (this, renderer);
+			GLBitmap.render (this, renderer);
 			
 		}
+		
+		__renderEvent (renderer);
 		
 	}
 	
 	
-	private override function __renderGLMask (renderSession:RenderSession):Void {
+	@:noCompletion private override function __renderGLMask (renderer:OpenGLRenderer):Void {
 		
-		__updateCacheBitmap (renderSession, false);
-		
-		if (__cacheBitmap != null && !__cacheBitmapRender) {
-			
-			GLBitmap.renderMask (__cacheBitmap, renderSession);
-			
-		} else {
-			
-			GLBitmap.renderMask (this, renderSession);
-			
-		}
+		GLBitmap.renderMask (this, renderer);
 		
 	}
 	
 	
-	private override function __updateCacheBitmap (renderSession:RenderSession, force:Bool):Void {
+	@:noCompletion private override function __updateCacheBitmap (renderer:DisplayObjectRenderer, force:Bool):Bool {
 		
-		if (filters == null) return;
-		super.__updateCacheBitmap (renderSession, force);
+		// TODO: Handle filters without an intermediate draw
 		
-	}
-	
-	
-	public override function __updateMask (maskGraphics:Graphics):Void {
-		
-		if (__bitmapData == null) {
-			
-			return;
-			
-		}
-		
-		maskGraphics.__commands.overrideMatrix (this.__worldTransform);
-		maskGraphics.beginFill (0);
-		maskGraphics.drawRect (0, 0, __bitmapData.width, __bitmapData.height);
-		
-		if (maskGraphics.__bounds == null) {
-			
-			maskGraphics.__bounds = new Rectangle ();
-			
-		}
-		
-		__getBounds (maskGraphics.__bounds, @:privateAccess Matrix.__identity);
-		
-		super.__updateMask (maskGraphics);
+		if (__filters == null && renderer.__type == OPENGL && __cacheBitmap == null) return false;
+		return super.__updateCacheBitmap (renderer, force);
 		
 	}
 	
@@ -307,21 +357,21 @@ class Bitmap extends DisplayObject implements IShaderDrawable {
 	
 	
 	
-	private function get_bitmapData ():BitmapData {
+	@:noCompletion private function get_bitmapData ():BitmapData {
 		
 		return __bitmapData;
 		
 	}
 	
 	
-	private function set_bitmapData (value:BitmapData):BitmapData {
+	@:noCompletion private function set_bitmapData (value:BitmapData):BitmapData {
 		
 		__bitmapData = value;
 		smoothing = false;
 		
 		__setRenderDirty ();
 		
-		if (__filters != null && __filters.length > 0) {
+		if (__filters != null) {
 			
 			//__updateFilters = true;
 			
@@ -334,7 +384,7 @@ class Bitmap extends DisplayObject implements IShaderDrawable {
 	}
 	
 	
-	private override function get_height ():Float {
+	@:noCompletion private override function get_height ():Float {
 		
 		if (__bitmapData != null) {
 			
@@ -347,7 +397,7 @@ class Bitmap extends DisplayObject implements IShaderDrawable {
 	}
 	
 	
-	private override function set_height (value:Float):Float {
+	@:noCompletion private override function set_height (value:Float):Float {
 		
 		if (__bitmapData != null) {
 			
@@ -367,7 +417,7 @@ class Bitmap extends DisplayObject implements IShaderDrawable {
 	}
 	
 	
-	private override function get_width ():Float {
+	@:noCompletion private override function get_width ():Float {
 		
 		if (__bitmapData != null) {
 			
@@ -380,7 +430,7 @@ class Bitmap extends DisplayObject implements IShaderDrawable {
 	}
 	
 	
-	private override function set_width (value:Float):Float {
+	@:noCompletion private override function set_width (value:Float):Float {
 		
 		if (__bitmapData != null) {
 			
@@ -401,3 +451,8 @@ class Bitmap extends DisplayObject implements IShaderDrawable {
 	
 	
 }
+
+
+#else
+typedef Bitmap = flash.display.Bitmap;
+#end

@@ -1,4 +1,10 @@
-package openfl.display;
+package openfl.display; #if !flash
+
+
+#if !openfl_debug
+@:fileXml('tags="haxe,release"')
+@:noDebug
+#end
 
 
 @:final class JPEGEncoderOptions {
@@ -15,3 +21,8 @@ package openfl.display;
 	
 	
 }
+
+
+#else
+typedef JPEGEncoderOptions = flash.display.JPEGEncoderOptions;
+#end

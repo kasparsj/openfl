@@ -1,8 +1,14 @@
 package openfl._internal.renderer.dom;
 
 
-import lime.math.color.ARGB;
 import openfl.display.DisplayObject;
+import openfl.display.DOMRenderer;
+
+#if (lime >= "7.0.0")
+import lime.math.ARGB;
+#else
+import lime.math.color.ARGB;
+#end
 
 @:access(openfl.display.DisplayObject)
 @:access(openfl.geom.Matrix)
@@ -11,33 +17,33 @@ import openfl.display.DisplayObject;
 class DOMDisplayObject {
 	
 	
-	public static function clear (displayObject:DisplayObject, renderSession:RenderSession):Void {
+	public static function clear (displayObject:DisplayObject, renderer:DOMRenderer):Void {
 		
 		#if (js && html5)
-		DOMShape.clear (displayObject, renderSession);
+		DOMShape.clear (displayObject, renderer);
 		#end
 		
 	}
 	
 	
-	public static inline function render (displayObject:DisplayObject, renderSession:RenderSession):Void {
+	public static inline function render (displayObject:DisplayObject, renderer:DOMRenderer):Void {
 		
 		#if (js && html5)
 		
 		//if (displayObject.opaqueBackground == null && displayObject.__graphics == null) return;
 		//if (!displayObject.__renderable || displayObject.__worldAlpha <= 0) return;
 		
-		if (displayObject.opaqueBackground != null && !displayObject.__cacheBitmapRender && displayObject.width > 0 && displayObject.height > 0) {
+		if (displayObject.opaqueBackground != null && !displayObject.__isCacheBitmapRender && displayObject.width > 0 && displayObject.height > 0) {
 			
-			//renderSession.maskManager.pushObject (displayObject);
+			//renderer.__pushMaskObject (displayObject);
 			
 			// TODO: opaqueBackground using DIV element
 			
-			//renderSession.maskManager.popObject (displayObject);
+			//renderer.__popMaskObject (displayObject);
 			
 		}
 		
-		DOMShape.render (displayObject, renderSession);
+		DOMShape.render (displayObject, renderer);
 		#end
 		
 	}

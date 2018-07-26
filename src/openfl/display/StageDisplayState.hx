@@ -1,11 +1,28 @@
-package openfl.display;
+package openfl.display; #if !flash #if !openfljs
 
 
+/**
+ * The StageDisplayState class provides values for the
+ * `Stage.displayState` property.
+ */
 @:enum abstract StageDisplayState(Null<Int>) {
 	
+	
+	/**
+	 * Specifies that the Stage is in full-screen mode.
+	 */
 	public var FULL_SCREEN = 0;
+	
+	/**
+	 * Specifies that the Stage is in full-screen mode with keyboard interactivity enabled.
+	 */
 	public var FULL_SCREEN_INTERACTIVE = 1;
+	
+	/**
+	 * Specifies that the Stage is in normal mode.
+	 */
 	public var NORMAL = 2;
+	
 	
 	@:from private static function fromString (value:String):StageDisplayState {
 		
@@ -20,6 +37,7 @@ package openfl.display;
 		
 	}
 	
+	
 	@:to private static function toString (value:Int):String {
 		
 		return switch (value) {
@@ -33,4 +51,23 @@ package openfl.display;
 		
 	}
 	
+	
 }
+
+
+#else
+
+
+@:enum abstract StageDisplayState(String) from String to String {
+	
+	public var FULL_SCREEN = "fullScreen";
+	public var FULL_SCREEN_INTERACTIVE = "fullScreenInteractive";
+	public var NORMAL = "normal";
+	
+}
+
+
+#end
+#else
+typedef StageDisplayState = flash.display.StageDisplayState;
+#end

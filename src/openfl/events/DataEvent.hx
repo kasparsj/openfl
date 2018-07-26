@@ -1,4 +1,10 @@
-package openfl.events;
+package openfl.events; #if !flash
+
+
+#if !openfl_debug
+@:fileXml('tags="haxe,release"')
+@:noDebug
+#end
 
 
 class DataEvent extends TextEvent {
@@ -38,3 +44,8 @@ class DataEvent extends TextEvent {
 	
 	
 }
+
+
+#else
+typedef DataEvent = flash.events.DataEvent;
+#end

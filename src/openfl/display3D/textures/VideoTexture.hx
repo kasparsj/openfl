@@ -1,4 +1,4 @@
-package openfl.display3D.textures;
+package openfl.display3D.textures; #if !flash
 
 
 import haxe.Timer;
@@ -23,14 +23,14 @@ import openfl.net.NetStream;
 	public var videoHeight (default, null):Int;
 	public var videoWidth (default, null):Int;
 	
-	private var __netStream:NetStream;
+	@:noCompletion private var __netStream:NetStream;
 	
 	
-	private function new (context:Context3D) {
+	@:noCompletion private function new (context:Context3D) {
 		
 		super (context);
 		
-		GLVideoTexture.create (this, __context.__renderSession);
+		GLVideoTexture.create (this, cast __context.__renderer);
 		
 	}
 	
@@ -67,14 +67,14 @@ import openfl.net.NetStream;
 	}
 	
 	
-	private override function __getTexture ():GLTexture {
+	@:noCompletion private override function __getTexture ():GLTexture {
 		
-		return GLVideoTexture.getTexture (this, __context.__renderSession);
+		return GLVideoTexture.getTexture (this, cast __context.__renderer);
 		
 	}
 	
 	
-	private function __textureReady ():Void {
+	@:noCompletion private function __textureReady ():Void {
 		
 		#if (js && html5)
 		
@@ -89,3 +89,8 @@ import openfl.net.NetStream;
 	
 	
 }
+
+
+#else
+typedef VideoTexture = flash.display3D.textures.VideoTexture;
+#end

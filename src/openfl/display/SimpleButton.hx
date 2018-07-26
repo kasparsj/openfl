@@ -1,8 +1,7 @@
-package openfl.display;
+package openfl.display; #if !flash
 
 
 import lime.ui.MouseCursor;
-import openfl._internal.renderer.RenderSession;
 import openfl._internal.swf.SWFLite;
 import openfl._internal.symbols.ButtonSymbol;
 import openfl.display.DisplayObject;
@@ -12,6 +11,24 @@ import openfl.geom.Rectangle;
 import openfl.events.MouseEvent;
 import openfl.media.SoundTransform;
 import openfl.Vector;
+
+
+/**
+ * The SimpleButton class lets you control all instances of button symbols in
+ * a SWF file.
+ *
+ * In Flash Professional, you can give a button an instance name in the
+ * Property inspector. SimpleButton instance names are displayed in the Movie
+ * Explorer and in the Insert Target Path dialog box in the Actions panel.
+ * After you create an instance of a button in Flash Professional, you can use
+ * the methods and properties of the SimpleButton class to manipulate buttons
+ * with ActionScript.
+ *
+ * In ActionScript 3.0, you use the `new SimpleButton()`
+ * constructor to create a SimpleButton instance.
+ *
+ * The SimpleButton class inherits from the InteractiveObject class.
+ */
 
 #if !openfl_debug
 @:fileXml('tags="haxe,release"')
@@ -27,31 +44,102 @@ import openfl.Vector;
 class SimpleButton extends InteractiveObject {
 	
 	
-	private static var __initSWF:SWFLite;
-	private static var __initSymbol:ButtonSymbol;
+	@:noCompletion private static var __initSWF:SWFLite;
+	@:noCompletion private static var __initSymbol:ButtonSymbol;
 	
+	
+	/**
+	 * Specifies a display object that is used as the visual object for the
+	 * button "Down" state  - the state that the button is in when the user
+	 * selects the `hitTestState` object.
+	 */
 	public var downState (get, set):DisplayObject;
+	
+	/**
+	 * A Boolean value that specifies whether a button is enabled. When a button
+	 * is disabled(the enabled property is set to `false`), the
+	 * button is visible but cannot be clicked. The default value is
+	 * `true`. This property is useful if you want to disable part of
+	 * your navigation; for example, you might want to disable a button in the
+	 * currently displayed page so that it can't be clicked and the page cannot
+	 * be reloaded.
+	 *
+	 * **Note:** To prevent mouseClicks on a button, set both the
+	 * `enabled` and `mouseEnabled` properties to
+	 * `false`.
+	 */
 	public var enabled:Bool;
+	
+	/**
+	 * Specifies a display object that is used as the hit testing object for the
+	 * button. For a basic button, set the `hitTestState` property to
+	 * the same display object as the `overState` property. If you do
+	 * not set the `hitTestState` property, the SimpleButton is
+	 * inactive  -  it does not respond to user input events.
+	 */
 	public var hitTestState (get, set):DisplayObject;
+	
+	/**
+	 * Specifies a display object that is used as the visual object for the
+	 * button over state  -  the state that the button is in when the pointer is
+	 * positioned over the button.
+	 */
 	public var overState (get, set):DisplayObject;
+	
+	/**
+	 * The SoundTransform object assigned to this button. A SoundTransform object
+	 * includes properties for setting volume, panning, left speaker assignment,
+	 * and right speaker assignment. This SoundTransform object applies to all
+	 * states of the button. This SoundTransform object affects only embedded
+	 * sounds.
+	 */
 	public var soundTransform (get, set):SoundTransform;
+	
+	/**
+	 * Indicates whether other display objects that are SimpleButton or MovieClip
+	 * objects can receive user input release events. The
+	 * `trackAsMenu` property lets you create menus. You can set the
+	 * `trackAsMenu` property on any SimpleButton or MovieClip object.
+	 * If the `trackAsMenu` property does not exist, the default
+	 * behavior is `false`.
+	 *
+	 * You can change the `trackAsMenu` property at any time; the
+	 * modified button immediately takes on the new behavior. 
+	 */
 	public var trackAsMenu:Bool;
+	
+	/**
+	 * Specifies a display object that is used as the visual object for the
+	 * button up state  -  the state that the button is in when the pointer is
+	 * not positioned over the button.
+	 */
 	public var upState (get, set):DisplayObject;
+	
+	/**
+	 * A Boolean value that, when set to `true`, indicates whether the
+	 * hand cursor is shown when the pointer rolls over a button. If this
+	 * property is set to `false`, the arrow pointer cursor is
+	 * displayed instead. The default is `true`.
+	 *
+	 * You can change the `useHandCursor` property at any time; the
+	 * modified button immediately uses the new cursor behavior. 
+	 */
 	public var useHandCursor:Bool;
 	
-	private var __currentState (default, set):DisplayObject;
-	private var __downState:DisplayObject;
-	private var __hitTestState:DisplayObject;
-	private var __ignoreEvent:Bool;
-	private var __overState:DisplayObject;
-	private var __previousStates:Vector<DisplayObject>;
-	private var __soundTransform:SoundTransform;
-	private var __symbol:ButtonSymbol;
-	private var __upState:DisplayObject;
+	
+	@:noCompletion private var __currentState (default, set):DisplayObject;
+	@:noCompletion private var __downState:DisplayObject;
+	@:noCompletion private var __hitTestState:DisplayObject;
+	@:noCompletion private var __ignoreEvent:Bool;
+	@:noCompletion private var __overState:DisplayObject;
+	@:noCompletion private var __previousStates:Vector<DisplayObject>;
+	@:noCompletion private var __soundTransform:SoundTransform;
+	@:noCompletion private var __symbol:ButtonSymbol;
+	@:noCompletion private var __upState:DisplayObject;
 	
 	
 	#if openfljs
-	private static function __init__ () {
+	@:noCompletion private static function __init__ () {
 		
 		untyped Object.defineProperties (SimpleButton.prototype, {
 			"downState": { get: untyped __js__ ("function () { return this.get_downState (); }"), set: untyped __js__ ("function (v) { return this.set_downState (v); }") },
@@ -65,6 +153,16 @@ class SimpleButton extends InteractiveObject {
 	#end
 	
 	
+	/**
+	 * Creates a new SimpleButton instance. Any or all of the display objects
+	 * that represent the various button states can be set as parameters in the
+	 * constructor.
+	 * 
+	 * @param upState      The initial value for the SimpleButton up state.
+	 * @param overState    The initial value for the SimpleButton over state.
+	 * @param downState    The initial value for the SimpleButton down state.
+	 * @param hitTestState The initial value for the SimpleButton hitTest state.
+	 */
 	public function new (upState:DisplayObject = null, overState:DisplayObject = null, downState:DisplayObject = null, hitTestState:DisplayObject = null) {
 		
 		super ();
@@ -76,7 +174,7 @@ class SimpleButton extends InteractiveObject {
 		__upState = (upState != null) ? upState : new DisplayObject ();
 		__overState = overState;
 		__downState = downState;
-		__hitTestState = (hitTestState != null) ? hitTestState : new DisplayObject ();
+		this.hitTestState = (hitTestState != null) ? hitTestState : new DisplayObject ();
 		
 		addEventListener (MouseEvent.MOUSE_DOWN, __this_onMouseDown);
 		addEventListener (MouseEvent.MOUSE_OUT, __this_onMouseOut);
@@ -101,7 +199,7 @@ class SimpleButton extends InteractiveObject {
 	}
 	
 	
-	private function __fromSymbol (swf:SWFLite, symbol:ButtonSymbol):Void {
+	@:noCompletion private function __fromSymbol (swf:SWFLite, symbol:ButtonSymbol):Void {
 		
 		__symbol = symbol;
 		
@@ -132,30 +230,22 @@ class SimpleButton extends InteractiveObject {
 	}
 	
 	
-	private override function __getBounds (rect:Rectangle, matrix:Matrix):Void {
+	@:noCompletion private override function __getBounds (rect:Rectangle, matrix:Matrix):Void {
 		
 		super.__getBounds (rect, matrix);
 		
-		if (matrix != null) {
-			
-			__updateTransforms (matrix);
-			__updateChildren (true);
-			
-		}
+		var childWorldTransform = Matrix.__pool.get();
 		
-		__currentState.__getBounds (rect, __currentState.__worldTransform);
+		DisplayObject.__calculateAbsoluteTransform (__currentState.__transform, matrix, childWorldTransform);
 		
-		if (matrix != null) {
-			
-			__updateTransforms ();
-			__updateChildren (true);
-			
-		}
+		__currentState.__getBounds (rect, childWorldTransform);
+		
+		Matrix.__pool.release(childWorldTransform);
 		
 	}
 	
 	
-	private override function __getRenderBounds (rect:Rectangle, matrix:Matrix):Void {
+	@:noCompletion private override function __getRenderBounds (rect:Rectangle, matrix:Matrix):Void {
 		
 		if (__scrollRect != null) {
 			
@@ -168,33 +258,25 @@ class SimpleButton extends InteractiveObject {
 			
 		}
 		
-		if (matrix != null) {
-			
-			__updateTransforms (matrix);
-			__updateChildren (true);
-			
-		}
+		var childWorldTransform = Matrix.__pool.get();
 		
-		__currentState.__getRenderBounds (rect, __currentState.__worldTransform);
+		DisplayObject.__calculateAbsoluteTransform (__currentState.__transform, matrix, childWorldTransform);
 		
-		if (matrix != null) {
-			
-			__updateTransforms ();
-			__updateChildren (true);
-			
-		}
+		__currentState.__getRenderBounds (rect, childWorldTransform);
+		
+		Matrix.__pool.release(childWorldTransform);
 		
 	}
 	
 	
-	private override function __getCursor ():MouseCursor {
+	@:noCompletion private override function __getCursor ():MouseCursor {
 		
 		return (useHandCursor && !__ignoreEvent) ? POINTER : null;
 		
 	}
 	
 	
-	private override function __hitTest (x:Float, y:Float, shapeFlag:Bool, stack:Array<DisplayObject>, interactiveOnly:Bool, hitObject:DisplayObject):Bool {
+	@:noCompletion private override function __hitTest (x:Float, y:Float, shapeFlag:Bool, stack:Array<DisplayObject>, interactiveOnly:Bool, hitObject:DisplayObject):Bool {
 		
 		var hitTest = false;
 		
@@ -251,7 +333,7 @@ class SimpleButton extends InteractiveObject {
 	}
 	
 	
-	private override function __hitTestMask (x:Float, y:Float):Bool {
+	@:noCompletion private override function __hitTestMask (x:Float, y:Float):Bool {
 		
 		var hitTest = false;
 		
@@ -266,61 +348,62 @@ class SimpleButton extends InteractiveObject {
 	}
 	
 	
-	private override function __renderCairo (renderSession:RenderSession):Void {
+	@:noCompletion private override function __renderCairo (renderer:CairoRenderer):Void {
 		
 		if (!__renderable || __worldAlpha <= 0 || __currentState == null) return;
 		
-		renderSession.maskManager.pushObject (this);
-		__currentState.__renderCairo (renderSession);
-		renderSession.maskManager.popObject (this);
+		renderer.__pushMaskObject (this);
+		__currentState.__renderCairo (renderer);
+		renderer.__popMaskObject (this);
+		
+		__renderEvent (renderer);
 		
 	}
 	
 	
-	private override function __renderCairoMask (renderSession:RenderSession):Void {
+	@:noCompletion private override function __renderCairoMask (renderer:CairoRenderer):Void {
 		
-		__currentState.__renderCairoMask (renderSession);
+		__currentState.__renderCairoMask (renderer);
 		
 	}
 	
 	
-	private override function __renderCanvas (renderSession:RenderSession):Void {
+	@:noCompletion private override function __renderCanvas (renderer:CanvasRenderer):Void {
 		
 		if (!__renderable || __worldAlpha <= 0 || __currentState == null) return;
 		
 		#if !neko
+		renderer.__pushMaskObject (this);
+		__currentState.__renderCanvas (renderer);
+		renderer.__popMaskObject (this);
 		
-		renderSession.maskManager.pushObject (this);
-		__currentState.__renderCanvas (renderSession);
-		renderSession.maskManager.popObject (this);
-		
+		__renderEvent (renderer);
 		#end
 		
 	}
 	
 	
-	private override function __renderCanvasMask (renderSession:RenderSession):Void {
+	@:noCompletion private override function __renderCanvasMask (renderer:CanvasRenderer):Void {
 		
-		var bounds = Rectangle.__pool.get ();
-		__getLocalBounds (bounds);
+		// var bounds = Rectangle.__pool.get ();
+		// __getLocalBounds (bounds);
 		
-		renderSession.context.rect (0, 0, bounds.width, bounds.height);
+		// renderer.context.rect (bounds.x, bounds.y, bounds.width, bounds.height);
 		
-		Rectangle.__pool.release (bounds);
-		__currentState.__renderCanvasMask (renderSession);
+		// Rectangle.__pool.release (bounds);
+		__currentState.__renderCanvasMask (renderer);
 		
 	}
 	
 	
-	private override function __renderDOM (renderSession:RenderSession):Void {
+	@:noCompletion private override function __renderDOM (renderer:DOMRenderer):Void {
 		
 		#if !neko
-		
-		renderSession.maskManager.pushObject (this);
+		renderer.__pushMaskObject (this);
 		
 		for (previousState in __previousStates) {
 			
-			previousState.__renderDOM (renderSession);
+			previousState.__renderDOM (renderer);
 			
 		}
 		
@@ -332,38 +415,41 @@ class SimpleButton extends InteractiveObject {
 				__currentState.__setStageReference(stage);
 			}
 
-			__currentState.__renderDOM (renderSession);
+			__currentState.__renderDOM (renderer);
 			
 		}
 		
-		renderSession.maskManager.popObject (this);
+		renderer.__popMaskObject (this);
 		
+		__renderEvent (renderer);
 		#end
 		
 	}
 	
 	
-	private override function __renderGL (renderSession:RenderSession):Void {
+	@:noCompletion private override function __renderGL (renderer:OpenGLRenderer):Void {
 		
 		if (!__renderable || __worldAlpha <= 0 || __currentState == null) return;
 		
-		renderSession.maskManager.pushObject (this);
-		__currentState.__renderGL (renderSession);
-		renderSession.maskManager.popObject (this);
+		renderer.__pushMaskObject (this);
+		__currentState.__renderGL (renderer);
+		renderer.__popMaskObject (this);
+		
+		__renderEvent (renderer);
 		
 	}
 	
 	
-	private override function __renderGLMask (renderSession:RenderSession):Void {
+	@:noCompletion private override function __renderGLMask (renderer:OpenGLRenderer):Void {
 		
 		if (__currentState == null) return;
 		
-		__currentState.__renderGLMask (renderSession);
+		__currentState.__renderGLMask (renderer);
 		
 	}
 	
 	
-	private override function __setStageReference (stage:Stage):Void {
+	@:noCompletion private override function __setStageReference (stage:Stage):Void {
 		
 		super.__setStageReference (stage);
 		
@@ -382,7 +468,7 @@ class SimpleButton extends InteractiveObject {
 	}
 	
 	
-	private override function __setTransformDirty ():Void {
+	@:noCompletion private override function __setTransformDirty ():Void {
 		
 		super.__setTransformDirty ();
 		
@@ -401,21 +487,21 @@ class SimpleButton extends InteractiveObject {
 	}
 	
 	
-	public override function __update (transformOnly:Bool, updateChildren:Bool, ?maskGraphics:Graphics = null):Void {
+	@:noCompletion private override function __update (transformOnly:Bool, updateChildren:Bool):Void {
 		
-		super.__update (transformOnly, updateChildren, maskGraphics);
+		super.__update (transformOnly, updateChildren);
 		
 		if (updateChildren) {
 			
 			if (__currentState != null) {
 				
-				__currentState.__update (transformOnly, true, maskGraphics);
+				__currentState.__update (transformOnly, true);
 				
 			}
 			
 			if (hitTestState != null && hitTestState != __currentState) {
 				
-				hitTestState.__update (transformOnly, true, maskGraphics);
+				hitTestState.__update (transformOnly, true);
 				
 			}
 			
@@ -424,26 +510,7 @@ class SimpleButton extends InteractiveObject {
 	}
 	
 	
-	public override function __updateChildren (transformOnly:Bool):Void {
-		
-		super.__updateChildren (transformOnly);
-		
-		if (__currentState != null) {
-			
-			__currentState.__updateChildren (transformOnly);
-			
-		}
-		
-		if (hitTestState != null && hitTestState != __currentState) {
-			
-			hitTestState.__updateChildren (transformOnly);
-			
-		}
-		
-	}
-	
-	
-	public override function __updateTransforms (overrideTransform:Matrix = null):Void {
+	@:noCompletion private override function __updateTransforms (overrideTransform:Matrix = null):Void {
 		
 		super.__updateTransforms (overrideTransform);
 		
@@ -469,14 +536,14 @@ class SimpleButton extends InteractiveObject {
 	
 	
 	
-	private function get_downState ():DisplayObject {
+	@:noCompletion private function get_downState ():DisplayObject {
 		
 		return __downState;
 		
 	}
 	
 	
-	private function set_downState (downState:DisplayObject):DisplayObject {
+	@:noCompletion private function set_downState (downState:DisplayObject):DisplayObject {
 		
 		if (__downState != null && __currentState == __downState) {
 			
@@ -489,14 +556,14 @@ class SimpleButton extends InteractiveObject {
 	}
 	
 	
-	private function get_hitTestState ():DisplayObject {
+	@:noCompletion private function get_hitTestState ():DisplayObject {
 		
 		return __hitTestState;
 		
 	}
 	
 	
-	private function set_hitTestState (hitTestState:DisplayObject):DisplayObject {
+	@:noCompletion private function set_hitTestState (hitTestState:DisplayObject):DisplayObject {
 		
 		if (__hitTestState != null && __hitTestState != hitTestState) {
 			
@@ -520,14 +587,14 @@ class SimpleButton extends InteractiveObject {
 	}
 	
 	
-	private function get_overState ():DisplayObject {
+	@:noCompletion private function get_overState ():DisplayObject {
 		
 		return __overState;
 		
 	}
 	
 	
-	private function set_overState (overState:DisplayObject):DisplayObject {
+	@:noCompletion private function set_overState (overState:DisplayObject):DisplayObject {
 		
 		if (__overState != null && __currentState == __overState) {
 			
@@ -540,7 +607,7 @@ class SimpleButton extends InteractiveObject {
 	}
 	
 	
-	private function get_soundTransform ():SoundTransform {
+	@:noCompletion private function get_soundTransform ():SoundTransform {
 		
 		if (__soundTransform == null) {
 			
@@ -553,7 +620,7 @@ class SimpleButton extends InteractiveObject {
 	}
 	
 	
-	private function set_soundTransform (value:SoundTransform):SoundTransform {
+	@:noCompletion private function set_soundTransform (value:SoundTransform):SoundTransform {
 		
 		__soundTransform = new SoundTransform (value.volume, value.pan);
 		return value;
@@ -561,14 +628,14 @@ class SimpleButton extends InteractiveObject {
 	}
 	
 	
-	private function get_upState ():DisplayObject {
+	@:noCompletion private function get_upState ():DisplayObject {
 		
 		return __upState;
 		
 	}
 	
 	
-	private function set_upState (upState:DisplayObject):DisplayObject {
+	@:noCompletion private function set_upState (upState:DisplayObject):DisplayObject {
 		
 		if (__upState != null && __currentState == __upState) {
 			
@@ -581,7 +648,7 @@ class SimpleButton extends InteractiveObject {
 	}
 	
 	
-	private function set___currentState (value:DisplayObject):DisplayObject {
+	@:noCompletion private function set___currentState (value:DisplayObject):DisplayObject {
 		
 		if (__currentState != null && __currentState != hitTestState) {
 			
@@ -653,14 +720,14 @@ class SimpleButton extends InteractiveObject {
 	
 	
 	
-	private function __this_onMouseDown (event:MouseEvent):Void {
+	@:noCompletion private function __this_onMouseDown (event:MouseEvent):Void {
 		
 		__currentState = downState;
 		
 	}
 	
 	
-	private function __this_onMouseOut (event:MouseEvent):Void {
+	@:noCompletion private function __this_onMouseOut (event:MouseEvent):Void {
 		
 		__ignoreEvent = false;
 		
@@ -673,7 +740,7 @@ class SimpleButton extends InteractiveObject {
 	}
 	
 	
-	private function __this_onMouseOver (event:MouseEvent):Void {
+	@:noCompletion private function __this_onMouseOver (event:MouseEvent):Void {
 		
 		if (event.buttonDown) {
 			
@@ -690,7 +757,7 @@ class SimpleButton extends InteractiveObject {
 	}
 	
 	
-	private function __this_onMouseUp (event:MouseEvent):Void {
+	@:noCompletion private function __this_onMouseUp (event:MouseEvent):Void {
 		
 		__ignoreEvent = false;
 		
@@ -708,3 +775,8 @@ class SimpleButton extends InteractiveObject {
 	
 	
 }
+
+
+#else
+typedef SimpleButton = flash.display.SimpleButton;
+#end

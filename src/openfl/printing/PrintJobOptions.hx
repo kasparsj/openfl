@@ -1,4 +1,10 @@
-package openfl.printing;
+package openfl.printing; #if !flash
+
+
+#if !openfl_debug
+@:fileXml('tags="haxe,release"')
+@:noDebug
+#end
 
 
 class PrintJobOptions {
@@ -15,3 +21,8 @@ class PrintJobOptions {
 	
 	
 }
+
+
+#else
+typedef PrintJobOptions = flash.printing.PrintJobOptions;
+#end
