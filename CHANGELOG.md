@@ -1,3 +1,74 @@
+8.5.0 (09/26/2018)
+------------------
+
+* Migrated OpenGL rendering internally to use `Stage3D` instead of calling GL directly
+* Added support for multiple `Stage3D` instances (initially 2 on mobile, 4 on desktop)
+* Added OpenGL state caching in `Context3D` (unless `-Dopenfl-disable-context-cache`)
+* Added `Context3DProgramFormat`, with initial support for GLSL shaders in `Context3D`
+* Added `stage.context3D`, present when hardware acceleration is enabled
+* Added pressure values to `TouchEvent`
+* Added `application.meta.version` to the default application template
+* Added `PerspectiveMatrix3D` to `openfl.utils`
+* Removed prefixes on `imageSmoothingEnabled` internally to remove HTML5 warnings
+* Removed types deprecated since OpenFL 8.0
+* Improved performance in `drawQuads` and `Tilemap` when using a hardware renderer
+* Improved shaders to use `highp` float values when available
+* Improved each `Stage3D` to use its own buffers (unless `-Dopenfl-share-context`)
+* Improved `Font.registerFont` to allow registering font instances in addition to classes
+* Improved HTML5 font rendering to use font ascender/descender values if present
+* Fixed a regression in `TextField` clipping when using `scrollX`
+* Fixed support for OpenGL-based video on HTML5
+* Fixed many issues related to `Stage3D` state conflicts with the display list renderer
+* Fixed compilation issues in Haxe 4 development builds
+* Fixed an issue where hardware `cacheAsBitmap` could result in blank textures
+* Fixed dispatch of `MOUSE_MOVE` event before dispatching `MOUSE_LEAVE`
+* Fixed a regression in the visibility of the mouse cursor when using `Mouse.hide`
+
+
+8.4.1 (08/13/2018)
+------------------
+
+* Fixed an issue where the Flash preloader could dispatch complete multiple times
+* Fixed a regression in processing SWF assets for Haxelib releases
+* Fixed an issue with stenciling on Stage3D projects that use display list masks
+* Fixed the value of `ExternalInterface.objectID` on single HTML5 embeds
+
+
+8.4.0 (08/08/2018)
+------------------
+
+* Updated to Lime 7.0.0 (with backward support for Lime 6.4)
+* Merged doc sources into runtime sources for better display server support
+* Removed generated documentation from NPM releases to make them smaller
+* Added support for `readObject` and `writeObject` in `openfl.net.Socket`
+* Improved native font auto-hinting (disabled when `sharpness = 400`)
+* Improved performance by dispatching mouse move events more sparingly
+* Improved state management between `Stage3D` and display list rendering
+* Improved object cleanup when removing children and using DOM rendering
+* Improved OpenGL rendering when mask objects are on a half-pixel
+* Fixed support for multiple `BitmapData` inputs in a custom shader
+* Fixed GL `cacheAsBitmap` and `bitmapData.draw` rendering that uses masks
+* Fixed `openfl.net.Socket` to not block while connecting
+* Fixed support for `MouseEvent.ROLL_OVER` events when not using `ROLL_OUT`
+* Fixed renderer support for `bitmap.opaqueBackground`
+* Fixed `FullScreenEvent` to dispatch with the proper boolean value
+* Fixed the behavior of `copyColumn` and `copyRow` in `Matrix`
+* Fixed a small memory leak when using multiple textures in GL `Tilemap`
+* Fixed ability to `preventDefault` on `TextEvent.TEXT_INPUT` events
+* Fixed missing dispatch of `TextEvent.TEXT_INPUT` in some cases
+* Fixed minor issues in `textField.getFirstCharInParagraph`
+* Fixed minor issues in `textField.getParagraphLength`
+* Fixed optimizations in `EventDispatcher` if dispatch is re-entrant
+* Fixed missing `Event.ADDED_TO_STAGE` event for SWF-based children
+* Fixed fullscreen exit event to properly dispatch on HTML5 target
+* Fixed minor issues in the behavior of `bitmapData.draw`
+* Fixed `-Dtelemetry` to properly enabled advanced-telemetry on Flash
+* Fixed `loader.loaderInfo.width` and `height` values when loading bitmaps
+* Fixed a regression in setting `stage.color` to 0
+* Fixed the orientation of cube textures in Stage3D
+* Fixed "JPEG-XR+LZMA" warning to output instead of causing an error
+
+
 8.3.0 (06/25/2018)
 ------------------
 

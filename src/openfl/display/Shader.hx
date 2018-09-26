@@ -6,20 +6,17 @@ import lime.graphics.opengl.GLShader;
 import lime.utils.Float32Array;
 import lime.utils.Log;
 import openfl._internal.renderer.ShaderBuffer;
+import openfl.display3D.Context3D;
+import openfl.display3D.Program3D;
 import openfl.utils.ByteArray;
-
-#if (lime >= "7.0.0")
-import lime.graphics.RenderContext;
-#else
-import lime.graphics.opengl.WebGLContext;
-import lime.graphics.GLRenderContext;
-#end
 
 #if !openfl_debug
 @:fileXml('tags="haxe,release"')
 @:noDebug
 #end
 
+@:access(openfl.display3D.Context3D)
+@:access(openfl.display3D.Program3D)
 @:access(openfl.display.ShaderInput)
 @:access(openfl.display.ShaderParameter)
 
@@ -32,20 +29,19 @@ import lime.graphics.GLRenderContext;
 class Shader {
 	
 	
-	@:noCompletion private static var __glPrograms = new Map<String, GLProgram> ();
-	
 	public var byteCode (null, default):ByteArray;
 	public var data (get, set):ShaderData;
 	public var glFragmentSource (get, set):String;
 	public var glProgram (default, null):GLProgram;
 	public var glVertexSource (get, set):String;
 	public var precisionHint:ShaderPrecision;
+	public var program:Program3D;
 	
 	@:noCompletion private var __alpha:ShaderParameter<Float>;
 	@:noCompletion private var __bitmap:ShaderInput<BitmapData>;
 	@:noCompletion private var __colorMultiplier:ShaderParameter<Float>;
 	@:noCompletion private var __colorOffset:ShaderParameter<Float>;
-	@:noCompletion private var __context:#if (lime >= "7.0.0") RenderContext #else GLRenderContext #end;
+	@:noCompletion private var __context:Context3D;
 	@:noCompletion private var __data:ShaderData;
 	@:noCompletion private var __glFragmentSource:String;
 	@:noCompletion private var __glSourceDirty:Bool;
@@ -170,11 +166,7 @@ class Shader {
 	
 	@:noCompletion private function __createGLShader (source:String, type:Int):GLShader {
 		
-		#if (lime >= "7.0.0")
-		var gl = __context.webgl;
-		#else
-		var gl = __context;
-		#end
+		var gl = __context.gl;
 		
 		var shader = gl.createShader (type);
 		gl.shaderSource (shader, source);
@@ -196,11 +188,7 @@ class Shader {
 	
 	@:noCompletion private function __createGLProgram (vertexSource:String, fragmentSource:String):GLProgram {
 		
-		#if (lime >= "7.0.0")
-		var gl = __context.webgl;
-		#else
-		var gl = __context;
-		#end
+		var gl = __context.gl;
 		
 		var vertexShader = __createGLShader (vertexSource, gl.VERTEX_SHADER);
 		var fragmentShader = __createGLShader (fragmentSource, gl.FRAGMENT_SHADER);
@@ -238,7 +226,7 @@ class Shader {
 	
 	@:noCompletion private function __disable ():Void {
 		
-		if (glProgram != null) {
+		if (program != null) {
 			
 			__disableGL ();
 			
@@ -249,17 +237,16 @@ class Shader {
 	
 	@:noCompletion private function __disableGL ():Void {
 		
-		#if (lime >= "7.0.0")
-		var gl = __context.webgl;
-		#else
-		var gl = __context;
-		#end
+		var gl = __context.gl;
 		
-		// if (data.uImage0 != null) {
+		var textureCount = 0;
+		
+		for (input in __inputBitmapData) {
 			
-		// 	data.uImage0.input = null;
+			input.__disableGL (__context, textureCount);
+			textureCount++;
 			
-		// }
+		}
 		
 		for (parameter in __paramBool) {
 			
@@ -279,10 +266,9 @@ class Shader {
 			
 		}
 		
-		gl.bindBuffer (gl.ARRAY_BUFFER, null);
-		gl.bindTexture (gl.TEXTURE_2D, null);
+		__context.__bindGLArrayBuffer (null);
 		
-		if (__context.type == OPENGL) {
+		if (__context.__context.type == OPENGL) {
 			
 			gl.disable (gl.TEXTURE_2D);
 			
@@ -295,7 +281,7 @@ class Shader {
 		
 		__init ();
 		
-		if (glProgram != null) {
+		if (program != null) {
 			
 			__enableGL ();
 			
@@ -308,24 +294,16 @@ class Shader {
 		
 		var textureCount = 0;
 		
-		#if (lime >= "7.0.0")
-		var gl = __context.webgl;
-		#else
-		var gl = __context;
-		#end
+		var gl = __context.gl;
 		
 		for (input in __inputBitmapData) {
 			
-			if (input.input != null) {
-				
-				gl.uniform1i (input.index, textureCount);
-				textureCount++;
-				
-			}
+			gl.uniform1i (input.index, textureCount);
+			textureCount++;
 			
 		}
 		
-		if (__context.type == OPENGL && textureCount > 0) {
+		if (__context.__context.type == OPENGL && textureCount > 0) {
 			
 			gl.enable (gl.TEXTURE_2D);
 			
@@ -342,7 +320,7 @@ class Shader {
 			
 		}
 		
-		if (__glFragmentSource != null && __glVertexSource != null && (glProgram == null || __glSourceDirty)) {
+		if (__glFragmentSource != null && __glVertexSource != null && (program == null || __glSourceDirty)) {
 			
 			__initGL ();
 			
@@ -356,7 +334,7 @@ class Shader {
 		if (__glSourceDirty || __paramBool == null) {
 			
 			__glSourceDirty = false;
-			glProgram = null;
+			program = null;
 			
 			__inputBitmapData = new Array ();
 			__paramBool = new Array ();
@@ -369,18 +347,21 @@ class Shader {
 			
 		}
 		
-		if (__context != null && glProgram == null) {
+		if (__context != null && program == null) {
 			
-			#if (lime >= "7.0.0")
-			var gl = __context.webgl;
-			#else
-			var gl = __context;
-			#end
+			var gl = __context.gl;
 			
 			var prefix = 
 				
 				"#ifdef GL_ES
-				precision " + (precisionHint == FULL ? "mediump" : "lowp") + " float;
+				" + (precisionHint == FULL ?
+				"#ifdef GL_FRAGMENT_PRECISION_HIGH
+				precision highp float;
+				#else
+				precision mediump float;
+				#endif" : 
+				"precision lowp float;") +
+				"
 				#endif
 				";
 			
@@ -389,18 +370,25 @@ class Shader {
 			
 			var id = vertex + fragment;
 			
-			if (__glPrograms.exists (id)) {
+			if (__context.__programs.exists (id)) {
 				
-				glProgram = __glPrograms.get (id);
+				program = __context.__programs.get (id);
 				
 			} else {
 				
-				glProgram = __createGLProgram (vertex, fragment);
-				__glPrograms.set (id, glProgram);
+				program = __context.createProgram (GLSL);
+				
+				// TODO
+				// program.uploadSources (vertex, fragment);
+				program.__glProgram = __createGLProgram (vertex, fragment);
+				
+				__context.__programs.set (id, program);
 				
 			}
 			
-			if (glProgram != null) {
+			if (program != null) {
+				
+				glProgram = program.__glProgram;
 				
 				for (input in __inputBitmapData) {
 					
@@ -640,7 +628,7 @@ class Shader {
 	
 	@:noCompletion private function __update ():Void {
 		
-		if (glProgram != null) {
+		if (program != null) {
 			
 			__updateGL ();
 			
@@ -649,11 +637,11 @@ class Shader {
 	}
 	
 	
-	@:noCompletion private function __updateFromBuffer (shaderBuffer:ShaderBuffer):Void {
+	@:noCompletion private function __updateFromBuffer (shaderBuffer:ShaderBuffer, bufferOffset:Int):Void {
 		
-		if (glProgram != null) {
+		if (program != null) {
 			
-			__updateGLFromBuffer (shaderBuffer);
+			__updateGLFromBuffer (shaderBuffer, bufferOffset);
 			
 		}
 		
@@ -666,12 +654,8 @@ class Shader {
 		
 		for (input in __inputBitmapData) {
 			
-			if (input.input != null) {
-				
-				input.__updateGL (__context, textureCount);
-				textureCount++;
-				
-			}
+			input.__updateGL (__context, textureCount);
+			textureCount++;
 			
 		}
 		
@@ -696,7 +680,7 @@ class Shader {
 	}
 	
 	
-	@:noCompletion private function __updateGLFromBuffer (shaderBuffer:ShaderBuffer):Void {
+	@:noCompletion private function __updateGLFromBuffer (shaderBuffer:ShaderBuffer, bufferOffset:Int):Void {
 		
 		var textureCount = 0;
 		var input, inputData, inputFilter, inputMipFilter, inputWrap;
@@ -718,11 +702,7 @@ class Shader {
 			
 		}
 		
-		#if (lime >= "7.0.0")
-		var gl = __context.webgl;
-		#else
-		var gl:WebGLContext = __context;
-		#end
+		var gl = __context.gl;
 		
 		if (shaderBuffer.paramDataLength > 0) {
 			
@@ -734,14 +714,14 @@ class Shader {
 			
 			//Log.verbose ("bind param data buffer (length: " + shaderBuffer.paramData.length + ") (" + shaderBuffer.paramCount + ")");
 			
-			gl.bindBuffer (gl.ARRAY_BUFFER, shaderBuffer.paramDataBuffer);
+			__context.__bindGLArrayBuffer (shaderBuffer.paramDataBuffer);
 			gl.bufferData (gl.ARRAY_BUFFER, shaderBuffer.paramData, gl.DYNAMIC_DRAW);
 			
 		} else {
 			
 			//Log.verbose ("bind buffer null");
 			
-			gl.bindBuffer (gl.ARRAY_BUFFER, null);
+			__context.__bindGLArrayBuffer (null);
 			
 		}
 		
@@ -782,7 +762,7 @@ class Shader {
 					
 				} else {
 					
-					boolRef.__updateGLFromBuffer (__context, paramData, shaderBuffer.paramPositions[i], shaderBuffer.paramLengths[i]);
+					boolRef.__updateGLFromBuffer (__context, paramData, shaderBuffer.paramPositions[i], shaderBuffer.paramLengths[i], bufferOffset);
 					
 				}
 				
@@ -810,7 +790,7 @@ class Shader {
 					
 				} else {
 					
-					floatRef.__updateGLFromBuffer (__context, paramData, shaderBuffer.paramPositions[i], shaderBuffer.paramLengths[i]);
+					floatRef.__updateGLFromBuffer (__context, paramData, shaderBuffer.paramPositions[i], shaderBuffer.paramLengths[i], bufferOffset);
 					
 				}
 				
@@ -838,7 +818,7 @@ class Shader {
 					
 				} else {
 					
-					intRef.__updateGLFromBuffer (__context, paramData, shaderBuffer.paramPositions[i], shaderBuffer.paramLengths[i]);
+					intRef.__updateGLFromBuffer (__context, paramData, shaderBuffer.paramPositions[i], shaderBuffer.paramLengths[i], bufferOffset);
 					
 				}
 				

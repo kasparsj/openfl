@@ -185,21 +185,9 @@ class CairoRenderer extends DisplayObjectRenderer {
 	}
 	
 	
-	@:noCompletion private override function __renderStage3D (stage:Stage):Void {
-		
-		if (cairo == null) return;
-		
-		for (stage3D in stage.stage3Ds) {
-			
-			stage3D.__renderCairo (stage, this);
-			
-		}
-		
-	}
-	
-	
 	@:noCompletion private override function __setBlendMode (value:BlendMode):Void {
 		
+		if (__overrideBlendMode != null) value = __overrideBlendMode;
 		if (__blendMode == value) return;
 		
 		__blendMode = value;
@@ -208,7 +196,7 @@ class CairoRenderer extends DisplayObjectRenderer {
 			
 			case ADD:
 				
-				cairo.operator = CairoOperator.ADD;
+				cairo.setOperator (CairoOperator.ADD);
 			
 			//case ALPHA:
 				
@@ -216,11 +204,11 @@ class CairoRenderer extends DisplayObjectRenderer {
 			
 			case DARKEN:
 				
-				cairo.operator = CairoOperator.DARKEN;
+				cairo.setOperator (CairoOperator.DARKEN);
 			
 			case DIFFERENCE:
 				
-				cairo.operator = CairoOperator.DIFFERENCE;
+				cairo.setOperator (CairoOperator.DIFFERENCE);
 			
 			//case ERASE:
 				
@@ -228,7 +216,7 @@ class CairoRenderer extends DisplayObjectRenderer {
 			
 			case HARDLIGHT:
 				
-				cairo.operator = CairoOperator.HARD_LIGHT;
+				cairo.setOperator (CairoOperator.HARD_LIGHT);
 			
 			//case INVERT:
 				
@@ -236,23 +224,23 @@ class CairoRenderer extends DisplayObjectRenderer {
 			
 			case LAYER:
 				
-				cairo.operator = CairoOperator.OVER;
+				cairo.setOperator (CairoOperator.OVER);
 			
 			case LIGHTEN:
 				
-				cairo.operator = CairoOperator.LIGHTEN;
+				cairo.setOperator (CairoOperator.LIGHTEN);
 			
 			case MULTIPLY:
 				
-				cairo.operator = CairoOperator.MULTIPLY;
+				cairo.setOperator (CairoOperator.MULTIPLY);
 			
 			case OVERLAY:
 				
-				cairo.operator = CairoOperator.OVERLAY;
+				cairo.setOperator (CairoOperator.OVERLAY);
 			
 			case SCREEN:
 				
-				cairo.operator = CairoOperator.SCREEN;
+				cairo.setOperator (CairoOperator.SCREEN);
 			
 			//case SHADER:
 				
@@ -264,7 +252,7 @@ class CairoRenderer extends DisplayObjectRenderer {
 			
 			default:
 				
-				cairo.operator = CairoOperator.OVER;
+				cairo.setOperator (CairoOperator.OVER);
 			
 		}
 		
