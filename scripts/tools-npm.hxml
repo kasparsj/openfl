@@ -12,8 +12,9 @@
 -D format
 # -lib nodejs
 -cp ../node_modules/hxnodejs/src
+-cp .
 --macro allowPackage('sys')
---macro _hxnodejs.InitMacro.include()
+--macro define('nodejs')
 -D nodejs
 -D hxnodejs
 -D nocffi

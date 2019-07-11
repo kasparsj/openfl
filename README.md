@@ -1,4 +1,4 @@
-[![MIT License](https://img.shields.io/github/license/openfl/openfl.svg?style=flat)](LICENSE.md) [![NPM Version](https://img.shields.io/npm/v/openfl.svg?style=flat)](http://npmjs.com/package/openfl) [![CDNJS version](https://img.shields.io/cdnjs/v/openfl.svg?style=flat)](https://cdnjs.com/libraries/openfl) [![Haxelib Version](https://img.shields.io/github/tag/openfl/openfl.svg?style=flat&label=haxelib)](http://lib.haxe.org/p/openfl) [![Build Status](https://img.shields.io/circleci/project/github/openfl/openfl/develop.svg?style=flat)](https://circleci.com/gh/openfl/openfl)
+[![MIT License](https://img.shields.io/github/license/openfl/openfl.svg?style=flat)](LICENSE.md) [![NPM Version](https://img.shields.io/npm/v/openfl.svg?style=flat)](http://npmjs.com/package/openfl) [![CDNJS version](https://img.shields.io/cdnjs/v/openfl.svg?style=flat)](https://cdnjs.com/libraries/openfl) [![Haxelib Version](https://img.shields.io/github/tag/openfl/openfl.svg?style=flat&label=haxelib)](http://lib.haxe.org/p/openfl) [![Build Status](https://img.shields.io/circleci/project/github/openfl/openfl/develop.svg?style=flat)](https://circleci.com/gh/openfl/openfl) [![Discord Server](https://img.shields.io/discord/415681294446493696.svg?logo=discord)](https://discordapp.com/invite/tDgq8EE)
 
 
 <br />
@@ -272,9 +272,10 @@ bitmap.alpha = 0.5;
 There are more sample projects with additional features (such as sound, animation and video) in each of the OpenFL samples repositories:
 
  - https://github.com/openfl/openfl-samples-ts
- - https://github.com/openfl/openfl-samples
+ - https://github.com/openfl/openfl-samples-haxe
  - https://github.com/openfl/openfl-samples-es6
  - https://github.com/openfl/openfl-samples-es5
+ - https://github.com/openfl/openfl-samples-as3
 
 Each of the samples can be tested using `npm install` then `npm start`
 

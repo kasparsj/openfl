@@ -1,0 +1,3 @@
+package openfl;
+
+class MemoryTest {}
