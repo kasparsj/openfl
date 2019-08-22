@@ -1,7 +1,6 @@
 package openfl._internal.renderer.dom;
 
 import openfl.display.DisplayObject;
-import openfl.display.DOMRenderer;
 
 @:access(openfl.display.DisplayObject)
 @:access(openfl.geom.Matrix)
@@ -11,6 +10,10 @@ class DOMDisplayObject
 	public static function clear(displayObject:DisplayObject, renderer:DOMRenderer):Void
 	{
 		#if (js && html5)
+		if (displayObject.__cacheBitmap != null)
+		{
+			DOMBitmap.clear(displayObject.__cacheBitmap, renderer);
+		}
 		DOMShape.clear(displayObject, renderer);
 		#end
 	}

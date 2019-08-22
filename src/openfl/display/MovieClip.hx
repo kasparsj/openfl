@@ -153,6 +153,7 @@ class MovieClip extends Sprite #if (openfl_dynamic && haxe_ver < "4.0.0") implem
 	public var framesLoaded(get, never):Int;
 
 	public var isPlaying(get, never):Bool;
+
 	// @:noCompletion @:dox(hide) public var scenes (default, never):Array<openfl.display.Scene>;
 
 	/**
@@ -701,6 +702,7 @@ class MovieClip extends Sprite #if (openfl_dynamic && haxe_ver < "4.0.0") implem
 					var program = parser.parseString(frameData.scriptSource);
 					var interp = new Interp();
 					interp.variables.set("this", this);
+					interp.variables.set("flash.events_Event", Event);
 
 					var script = function()
 					{
@@ -972,6 +974,8 @@ class MovieClip extends Sprite #if (openfl_dynamic && haxe_ver < "4.0.0") implem
 		{
 			displayObject.transform.colorTransform = new ColorTransform();
 		}
+
+		displayObject.transform = displayObject.transform;
 
 		if (frameObject.filters != null)
 		{

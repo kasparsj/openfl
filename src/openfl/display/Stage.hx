@@ -40,6 +40,16 @@ import lime.ui.KeyModifier;
 import lime.ui.MouseCursor as LimeMouseCursor;
 import lime.ui.MouseWheelMode;
 import lime.ui.Window;
+#if !display
+import openfl._internal.renderer.context3D.Context3DRenderer;
+#if lime_cairo
+import openfl._internal.renderer.cairo.CairoRenderer;
+#end
+#if (js && html5)
+import openfl._internal.renderer.canvas.CanvasRenderer;
+import openfl._internal.renderer.dom.DOMRenderer;
+#end
+#end
 #end
 #if hxtelemetry
 import openfl.profiler.Telemetry;
@@ -174,7 +184,9 @@ typedef Element = Dynamic;
 @:fileXml('tags="haxe,release"')
 @:noDebug
 #end
+@:access(openfl._internal.renderer)
 @:access(openfl.display3D.Context3D)
+@:access(openfl.display.BitmapData)
 @:access(openfl.display.DisplayObjectRenderer)
 @:access(openfl.display.LoaderInfo)
 @:access(openfl.display.Sprite)
@@ -1171,7 +1183,7 @@ class Stage extends DisplayObjectContainer #if lime implements IModule #end
 
 	@:noCompletion private function __createRenderer():Void
 	{
-		#if lime
+		#if (lime && !display)
 		#if (js && html5)
 		var pixelRatio = 1;
 
@@ -1192,19 +1204,25 @@ class Stage extends DisplayObjectContainer #if lime implements IModule #end
 				context3D = new Context3D(this);
 				context3D.configureBackBuffer(windowWidth, windowHeight, 0, true, true, true);
 				context3D.present();
-				__renderer = new OpenGLRenderer(context3D);
+				if (BitmapData.__hardwareRenderer == null)
+				{
+					BitmapData.__hardwareRenderer = new Context3DRenderer(context3D);
+				}
+				__renderer = new Context3DRenderer(context3D);
 				#end
 
 			case CANVAS:
 				#if (js && html5)
-				__renderer = new CanvasRenderer(window.context.canvas2D);
-				cast(__renderer, CanvasRenderer).pixelRatio = pixelRatio;
+				var renderer = new CanvasRenderer(window.context.canvas2D);
+				renderer.pixelRatio = pixelRatio;
+				__renderer = renderer;
 				#end
 
 			case DOM:
 				#if (js && html5)
-				__renderer = new DOMRenderer(window.context.dom);
-				cast(__renderer, DOMRenderer).pixelRatio = pixelRatio;
+				var renderer = new DOMRenderer(window.context.dom);
+				renderer.pixelRatio = pixelRatio;
+				__renderer = renderer;
 				#end
 
 			case CAIRO:
@@ -1924,7 +1942,8 @@ class Stage extends DisplayObjectContainer #if lime implements IModule #end
 				if (__renderer.__type == CAIRO)
 				{
 					#if lime_cairo
-					cast(__renderer, CairoRenderer).cairo = context.cairo;
+					var renderer:CairoRenderer = cast __renderer;
+					renderer.cairo = context.cairo;
 					#end
 				}
 
@@ -1956,9 +1975,14 @@ class Stage extends DisplayObjectContainer #if lime implements IModule #end
 					context3D.__present = false;
 					context3D.__cleared = false;
 				}
+
+				context3D.__bitmapDataPool.cleanup();
 			}
 
 			__renderer.__cleared = false;
+
+			// TODO: Run once for multi-stage application
+			BitmapData.__pool.cleanup();
 		}
 		#end
 
@@ -2488,11 +2512,13 @@ class Stage extends DisplayObjectContainer #if lime implements IModule #end
 			}
 		}
 
-		for (target in __rollOutStack)
+		var item, i = 0;
+		while (i < __rollOutStack.length)
 		{
-			if (stack.indexOf(target) == -1)
+			item = __rollOutStack[i];
+			if (stack.indexOf(item) == -1)
 			{
-				__rollOutStack.remove(target);
+				__rollOutStack.remove(item);
 
 				#if openfl_pool_events
 				event = MouseEvent.__pool.get(MouseEvent.ROLL_OUT, __mouseX, __mouseY, __mouseOverTarget.__globalToLocal(targetPoint, localPoint),
@@ -2503,39 +2529,43 @@ class Stage extends DisplayObjectContainer #if lime implements IModule #end
 				#end
 				event.bubbles = false;
 
-				__dispatchTarget(target, event);
+				__dispatchTarget(item, event);
 
 				#if openfl_pool_events
 				MouseEvent.__pool.release(event);
 				#end
 			}
+			else
+			{
+				i++;
+			}
 		}
 
-		for (target in stack)
+		for (item in stack)
 		{
-			if (__rollOutStack.indexOf(target) == -1 && __mouseOverTarget != null)
+			if (__rollOutStack.indexOf(item) == -1 && __mouseOverTarget != null)
 			{
-				if (target.hasEventListener(MouseEvent.ROLL_OVER))
+				if (item.hasEventListener(MouseEvent.ROLL_OVER))
 				{
 					#if openfl_pool_events
 					event = MouseEvent.__pool.get(MouseEvent.ROLL_OVER, __mouseX, __mouseY, __mouseOverTarget.__globalToLocal(targetPoint, localPoint),
-						cast target);
+						cast item);
 					#else
 					event = MouseEvent.__create(MouseEvent.ROLL_OVER, button, __mouseX, __mouseY, __mouseOverTarget.__globalToLocal(targetPoint, localPoint),
-						cast target);
+						cast item);
 					#end
 					event.bubbles = false;
 
-					__dispatchTarget(target, event);
+					__dispatchTarget(item, event);
 
 					#if openfl_pool_events
 					MouseEvent.__pool.release(event);
 					#end
 				}
 
-				if (target.hasEventListener(MouseEvent.ROLL_OUT) || target.hasEventListener(MouseEvent.ROLL_OVER))
+				if (item.hasEventListener(MouseEvent.ROLL_OUT) || item.hasEventListener(MouseEvent.ROLL_OVER))
 				{
-					__rollOutStack.push(target);
+					__rollOutStack.push(item);
 				}
 			}
 		}
@@ -2722,12 +2752,13 @@ class Stage extends DisplayObjectContainer #if lime implements IModule #end
 		}
 
 		var touchOutStack = touchData.rollOutStack;
-
-		for (target in touchOutStack)
+		var item, i = 0;
+		while (i < touchOutStack.length)
 		{
-			if (stack.indexOf(target) == -1)
+			item = touchOutStack[i];
+			if (stack.indexOf(item) == -1)
 			{
-				touchOutStack.remove(target);
+				touchOutStack.remove(item);
 
 				touchEvent = TouchEvent.__create(TouchEvent.TOUCH_ROLL_OUT, null, touchX, touchY, touchOverTarget.__globalToLocal(targetPoint, localPoint),
 					cast touchOverTarget);
@@ -2736,29 +2767,33 @@ class Stage extends DisplayObjectContainer #if lime implements IModule #end
 				touchEvent.bubbles = false;
 				touchEvent.pressure = touch.pressure;
 
-				__dispatchTarget(target, touchEvent);
+				__dispatchTarget(item, touchEvent);
+			}
+			else
+			{
+				i++;
 			}
 		}
 
-		for (target in stack)
+		for (item in stack)
 		{
-			if (touchOutStack.indexOf(target) == -1)
+			if (touchOutStack.indexOf(item) == -1)
 			{
-				if (target.hasEventListener(TouchEvent.TOUCH_ROLL_OVER))
+				if (item.hasEventListener(TouchEvent.TOUCH_ROLL_OVER))
 				{
 					touchEvent = TouchEvent.__create(TouchEvent.TOUCH_ROLL_OVER, null, touchX, touchY,
-						touchOverTarget.__globalToLocal(targetPoint, localPoint), cast target);
+						touchOverTarget.__globalToLocal(targetPoint, localPoint), cast item);
 					touchEvent.touchPointID = touchId;
 					touchEvent.isPrimaryTouchPoint = isPrimaryTouchPoint;
 					touchEvent.bubbles = false;
 					touchEvent.pressure = touch.pressure;
 
-					__dispatchTarget(target, touchEvent);
+					__dispatchTarget(item, touchEvent);
 				}
 
-				if (target.hasEventListener(TouchEvent.TOUCH_ROLL_OUT))
+				if (item.hasEventListener(TouchEvent.TOUCH_ROLL_OUT))
 				{
-					touchOutStack.push(target);
+					touchOutStack.push(item);
 				}
 			}
 		}

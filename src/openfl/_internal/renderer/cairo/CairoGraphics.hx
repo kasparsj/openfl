@@ -3,7 +3,6 @@ package openfl._internal.renderer.cairo;
 import openfl._internal.renderer.DrawCommandBuffer;
 import openfl._internal.renderer.DrawCommandReader;
 import openfl.display.BitmapData;
-import openfl.display.CairoRenderer;
 import openfl.display.GradientType;
 import openfl.display.Graphics;
 import openfl.display.InterpolationMethod;
@@ -517,7 +516,13 @@ class CairoGraphics
 				case CUBIC_CURVE_TO:
 					var c = data.readCubicCurveTo();
 					hasPath = true;
-					cairo.curveTo(c.controlX1 - offsetX, c.controlY1 - offsetY, c.controlX2 - offsetX, c.controlY2 - offsetY, c.anchorX - offsetX, c.anchorY
+					cairo.curveTo(c.controlX1
+						- offsetX, c.controlY1
+						- offsetY, c.controlX2
+						- offsetX, c.controlY2
+						- offsetY, c.anchorX
+						- offsetX,
+						c.anchorY
 						- offsetY);
 
 				case CURVE_TO:
@@ -1445,8 +1450,14 @@ class CairoGraphics
 				{
 					case CUBIC_CURVE_TO:
 						var c = data.readCubicCurveTo();
-						cairo.curveTo(c.controlX1 - offsetX, c.controlY1 - offsetY, c.controlX2 - offsetX, c.controlY2 - offsetY, c.anchorX
-							- offsetX, c.anchorY - offsetY);
+						cairo.curveTo(c.controlX1
+							- offsetX, c.controlY1
+							- offsetY, c.controlX2
+							- offsetX, c.controlY2
+							- offsetY, c.anchorX
+							- offsetX,
+							c.anchorY
+							- offsetY);
 						positionX = c.anchorX;
 						positionY = c.anchorY;
 

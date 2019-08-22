@@ -1,7 +1,6 @@
 package openfl._internal.renderer.context3D;
 
 import openfl.display.DisplayObject;
-import openfl.display.OpenGLRenderer;
 #if gl_stats
 import openfl._internal.renderer.context3D.stats.Context3DStats;
 import openfl._internal.renderer.context3D.stats.DrawCallContext;
@@ -22,7 +21,7 @@ import openfl._internal.renderer.context3D.stats.DrawCallContext;
 @SuppressWarnings("checkstyle:FieldDocComment")
 class Context3DShape
 {
-	public static function render(shape:DisplayObject, renderer:OpenGLRenderer):Void
+	public static function render(shape:DisplayObject, renderer:Context3DRenderer):Void
 	{
 		if (!shape.__renderable || shape.__worldAlpha <= 0) return;
 
@@ -38,7 +37,7 @@ class Context3DShape
 
 			if (graphics.__bitmap != null && graphics.__visible)
 			{
-				var context = renderer.__context3D;
+				var context = renderer.context3D;
 				var scale9Grid = shape.__worldScale9Grid;
 
 				var shader = renderer.__initDisplayShader(cast shape.__worldShader);
@@ -69,7 +68,7 @@ class Context3DShape
 		}
 	}
 
-	public static function renderMask(shape:DisplayObject, renderer:OpenGLRenderer):Void
+	public static function renderMask(shape:DisplayObject, renderer:Context3DRenderer):Void
 	{
 		var graphics = shape.__graphics;
 
@@ -81,7 +80,7 @@ class Context3DShape
 
 			if (graphics.__bitmap != null)
 			{
-				var context = renderer.__context3D;
+				var context = renderer.context3D;
 
 				var shader = renderer.__maskShader;
 				renderer.setShader(shader);

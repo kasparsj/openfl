@@ -2,7 +2,6 @@ package openfl._internal.renderer.canvas;
 
 import openfl._internal.text.TextEngine;
 import openfl.display.BitmapData;
-import openfl.display.CanvasRenderer;
 import openfl.geom.Matrix;
 import openfl.geom.Rectangle;
 import openfl.text.TextField;
@@ -77,7 +76,7 @@ class CanvasTextField
 
 				var transform = graphics.__renderTransform;
 
-				if (renderer.__isDOM)
+				if (renderer.__domRenderer != null)
 				{
 					var scale = renderer.pixelRatio;
 
@@ -168,7 +167,8 @@ class CanvasTextField
 
 						context.fillText(text.substring(group.startIndex, group.endIndex), group.offsetX
 							+ scrollX
-							- bounds.x, group.offsetY
+							- bounds.x,
+							group.offsetY
 							+ group.ascent
 							+ scrollY
 							- bounds.y);
@@ -200,8 +200,14 @@ class CanvasTextField
 									context.strokeStyle = "#" + StringTools.hex(group.format.color & 0xFFFFFF, 6);
 									context.moveTo(group.offsetX + advance - textField.scrollH - bounds.x, scrollY + 2 - bounds.y);
 									context.lineWidth = 1;
-									context.lineTo(group.offsetX + advance - textField.scrollH - bounds.x, scrollY
-										+ TextEngine.getFormatHeight(textField.defaultTextFormat) - 1 - bounds.y);
+									context.lineTo(group.offsetX
+										+ advance
+										- textField.scrollH
+										- bounds.x,
+										scrollY
+										+ TextEngine.getFormatHeight(textField.defaultTextFormat)
+										- 1
+										- bounds.y);
 									context.stroke();
 									context.closePath();
 

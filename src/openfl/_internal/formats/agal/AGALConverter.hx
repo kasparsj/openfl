@@ -786,7 +786,7 @@ class RegisterMap
 			}
 			else if (entry.usage == RegisterUsage.VECTOR_4_ARRAY)
 			{
-				sb.add(entry.name + "[128]"); // this is an array of "count" elements.
+				sb.add(entry.name + "[32]"); // this is an array of "count" elements.
 				sb.add(";\n");
 			}
 			else
@@ -1014,7 +1014,18 @@ private class SourceRegister
 		{
 			// indirect register
 			str += o;
-			var indexComponent = String.fromCharCode("x".charCodeAt(0) + q);
+			var indexComponent = "";
+			switch (q)
+			{
+				case 0:
+					indexComponent = "x";
+				case 1:
+					indexComponent = "y";
+				case 2:
+					indexComponent = "z";
+				case 3:
+					indexComponent = "w";
+			}
 			var indexRegister = AGALConverter.prefixFromType(itype, programType) + this.n + "." + indexComponent;
 			str += "[ int(" + indexRegister + ") +" + offset + "]";
 		}

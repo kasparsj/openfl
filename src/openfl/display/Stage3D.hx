@@ -136,6 +136,7 @@ import js.Browser;
 @:access(openfl.display3D.Program3D)
 @:access(openfl.display.Bitmap)
 @:access(openfl.display.BitmapData)
+@:access(openfl.display.DisplayObjectRenderer)
 @:access(openfl.display.Stage)
 class Stage3D extends EventDispatcher
 {
@@ -367,84 +368,75 @@ class Stage3D extends EventDispatcher
 
 	@:noCompletion private function __createContext():Void
 	{
-		#if lime
-		var stage = __stage;
-		var renderer = stage.__renderer;
-
-		if (renderer.__type == CAIRO || renderer.__type == CANVAS)
-		{
-			__dispatchError();
-			return;
-		}
-
-		if (renderer.__type == OPENGL)
+		if (__stage.context3D != null)
 		{
 			#if openfl_share_context
-			context3D = stage.context3D;
+			context3D = __stage.context3D;
 			#else
-			context3D = new Context3D(stage, stage.context3D.__contextState, this);
+			context3D = new Context3D(__stage, __stage.context3D.__contextState, this);
 			#end
 			__dispatchCreate();
 		}
-		else if (renderer.__type == DOM)
+		#if (lime && (js && html5))
+		else if (false && __stage.window.context.type == DOM)
 		{
-			#if (js && html5)
-			__canvas = cast Browser.document.createElement("canvas");
-			__canvas.width = stage.stageWidth;
-			__canvas.height = stage.stageHeight;
+			// TODO
 
-			var window = stage.window;
-			var attributes = renderer.__context.attributes;
+			// __canvas = cast Browser.document.createElement("canvas");
+			// __canvas.width = stage.stageWidth;
+			// __canvas.height = stage.stageHeight;
 
-			var transparentBackground = Reflect.hasField(attributes, "background") && attributes.background == null;
-			var colorDepth = Reflect.hasField(attributes, "colorDepth") ? attributes.colorDepth : 32;
+			// var window = stage.window;
+			// var attributes = @:privateAccess window.__attributes;
 
-			var options = {
-				alpha: (transparentBackground || colorDepth > 16) ? true : false,
-				antialias: Reflect.hasField(attributes, "antialiasing") ? attributes.antialiasing > 0 : false,
-				depth: true,
-				premultipliedAlpha: true,
-				stencil: true,
-				preserveDrawingBuffer: false
-			};
+			// var transparentBackground = Reflect.hasField(attributes, "background") && attributes.background == null;
+			// var colorDepth = Reflect.hasField(attributes, "colorDepth") ? attributes.colorDepth : 32;
 
-			__webgl = cast __canvas.getContextWebGL(options);
+			// var options = {
+			// 	alpha: (transparentBackground || colorDepth > 16) ? true : false,
+			// 	antialias: Reflect.hasField(attributes, "antialiasing") ? attributes.antialiasing > 0 : false,
+			// 	depth: true,
+			// 	premultipliedAlpha: true,
+			// 	stencil: true,
+			// 	preserveDrawingBuffer: false
+			// };
 
-			if (__webgl != null)
-			{
-				#if webgl_debug
-				__webgl = untyped WebGLDebugUtils.makeDebugContext(__webgl);
-				#end
+			// __webgl = cast __canvas.getContextWebGL(options);
 
-				// TODO: Need to handle renderer/context better
+			// if (__webgl != null)
+			// {
+			// 	#if webgl_debug
+			// 	__webgl = untyped WebGLDebugUtils.makeDebugContext(__webgl);
+			// 	#end
 
-				// TODO
+			// 	// TODO: Need to handle renderer/context better
 
-				// __renderContext = new GLRenderContext (cast __webgl);
-				// GL.context = __renderContext;
+			// 	// TODO
 
-				// context3D = new Context3D (stage, this);
+			// 	// __renderContext = new GLRenderContext (cast __webgl);
+			// 	// GL.context = __renderContext;
 
-				// var renderer:DOMRenderer = cast renderer;
-				// renderer.element.appendChild (__canvas);
+			// 	// context3D = new Context3D (stage, this);
 
-				// __style = __canvas.style;
-				// __style.setProperty ("position", "absolute", null);
-				// __style.setProperty ("top", "0", null);
-				// __style.setProperty ("left", "0", null);
-				// __style.setProperty (renderer.__transformOriginProperty, "0 0 0", null);
-				// __style.setProperty ("z-index", "-1", null);
+			// 	// var renderer:DOMRenderer = cast renderer;
+			// 	// renderer.element.appendChild (__canvas);
 
-				// __dispatchCreate ();
-				__dispatchError();
-			}
-			else
-			{
-				__dispatchError();
-			}
-			#end
+			// 	// __style = __canvas.style;
+			// 	// __style.setProperty ("position", "absolute", null);
+			// 	// __style.setProperty ("top", "0", null);
+			// 	// __style.setProperty ("left", "0", null);
+			// 	// __style.setProperty (renderer.__transformOriginProperty, "0 0 0", null);
+			// 	// __style.setProperty ("z-index", "-1", null);
+
+			// 	// __dispatchCreate ();
+			// 	__dispatchError();
+			// }
 		}
 		#end
+		else
+		{
+			__dispatchError();
+		}
 	}
 
 	@:noCompletion private function __dispatchError():Void

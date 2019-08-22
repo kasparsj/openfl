@@ -211,6 +211,8 @@ class Shader
 	public var program:Program3D;
 
 	@:noCompletion private var __alpha:ShaderParameter<Float>;
+	@:noCompletion private var __alphaTexture:ShaderInput<BitmapData>;
+	@:noCompletion private var __alphaTextureMatrix:ShaderParameter<Float>;
 	@:noCompletion private var __bitmap:ShaderInput<BitmapData>;
 	@:noCompletion private var __colorMultiplier:ShaderParameter<Float>;
 	@:noCompletion private var __colorOffset:ShaderParameter<Float>;
@@ -237,10 +239,14 @@ class Shader
 	{
 		untyped Object.defineProperties(Shader.prototype, {
 			"data": {get: untyped __js__("function () { return this.get_data (); }"), set: untyped __js__("function (v) { return this.set_data (v); }")},
-			"glFragmentSource": {get: untyped __js__("function () { return this.get_glFragmentSource (); }"),
-				set: untyped __js__("function (v) { return this.set_glFragmentSource (v); }")},
-			"glVertexSource": {get: untyped __js__("function () { return this.get_glVertexSource (); }"),
-				set: untyped __js__("function (v) { return this.set_glVertexSource (v); }")},
+			"glFragmentSource": {
+				get: untyped __js__("function () { return this.get_glFragmentSource (); }"),
+				set: untyped __js__("function (v) { return this.set_glFragmentSource (v); }")
+			},
+			"glVertexSource": {
+				get: untyped __js__("function () { return this.get_glVertexSource (); }"),
+				set: untyped __js__("function (v) { return this.set_glVertexSource (v); }")
+			},
 		});
 	}
 	#end
@@ -589,6 +595,8 @@ class Shader
 
 				switch (name)
 				{
+					case "openfl_AlphaTexture":
+						__alphaTexture = input;
 					case "openfl_Texture":
 						__texture = input;
 					case "bitmap":
@@ -695,6 +703,7 @@ class Shader
 							switch (name)
 							{
 								case "openfl_Alpha": __alpha = parameter;
+								case "openfl_AlphaTextureMatrix": __alphaTextureMatrix = parameter;
 								case "openfl_ColorMultiplier": __colorMultiplier = parameter;
 								case "openfl_ColorOffset": __colorOffset = parameter;
 								case "openfl_Matrix": __matrix = parameter;

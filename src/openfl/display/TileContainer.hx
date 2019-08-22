@@ -309,6 +309,28 @@ class TileContainer extends Tile implements ITileContainer
 	}
 
 	/**
+		Sorts the z-order (front-to-back order) of all the tile objects in this
+		container based on a comparison function.
+
+		A comparison function should take two arguments to compare. Given the elements
+		A and B, the result of `compareFunction` can have a negative, 0, or positive value:
+
+		* A negative return value specifies that A appears before B in the sorted sequence.
+		* A return value of 0 specifies that A and B have the same sort order.
+		* A positive return value specifies that A appears after B in the sorted sequence.
+
+		The sort operation is not guaranteed to be stable, which means that the
+		order of equal elements may not be retained.
+
+		@param	compareFunction	A comparison function to use when sorting.
+	**/
+	#if (openfl < "9.0.0") @:dox(hide) #end public function sortTiles(compareFunction:Tile->Tile->Int):Void
+	{
+		__tiles.sort(compareFunction);
+		__setRenderDirty();
+	}
+
+	/**
 		Swaps the z-order (front-to-back order) of the two specified tile
 		objects. All other tile objects in the tile container remain in
 		the same index positions.
@@ -354,7 +376,8 @@ class TileContainer extends Tile implements ITileContainer
 		return __length;
 	}
 
-	override function get_height():Float {
+	override function get_height():Float
+	{
 		var result:Rectangle = #if flash __tempRectangle #else Rectangle.__pool.get() #end;
 		var rect = null;
 
@@ -370,15 +393,18 @@ class TileContainer extends Tile implements ITileContainer
 			#end
 		}
 
-		__getBounds(result,matrix);
+		__getBounds(result, matrix);
 
 		var h = result.height;
-		#if !flash Rectangle.__pool.release(result); #end
+		#if !flash
+		Rectangle.__pool.release(result);
+		#end
 
 		return h;
 	}
 
-	override function set_height(value:Float):Float {
+	override function set_height(value:Float):Float
+	{
 		var result:Rectangle = #if flash __tempRectangle #else Rectangle.__pool.get() #end;
 		var rect = null;
 
@@ -393,17 +419,21 @@ class TileContainer extends Tile implements ITileContainer
 			result.__expand(rect.x, rect.y, rect.width, rect.height);
 			#end
 		}
-		
-		if (result.height != 0) {
+
+		if (result.height != 0)
+		{
 			scaleY = value / result.height;
 		}
 
-		#if !flash Rectangle.__pool.release(result); #end
+		#if !flash
+		Rectangle.__pool.release(result);
+		#end
 
 		return value;
 	}
 
-	override function get_width():Float {
+	override function get_width():Float
+	{
 		var result:Rectangle = #if flash __tempRectangle #else Rectangle.__pool.get() #end;
 		var rect = null;
 
@@ -419,15 +449,18 @@ class TileContainer extends Tile implements ITileContainer
 			#end
 		}
 
-		__getBounds(result,matrix);
+		__getBounds(result, matrix);
 
 		var w = result.width;
-		#if !flash Rectangle.__pool.release(result); #end
-		
+		#if !flash
+		Rectangle.__pool.release(result);
+		#end
+
 		return w;
 	}
 
-	override function set_width(value:Float):Float {
+	override function set_width(value:Float):Float
+	{
 		var result:Rectangle = #if flash __tempRectangle #else Rectangle.__pool.get() #end;
 		var rect = null;
 
@@ -443,11 +476,14 @@ class TileContainer extends Tile implements ITileContainer
 			#end
 		}
 
-		if (result.width != 0) {
+		if (result.width != 0)
+		{
 			scaleX = value / result.width;
 		}
 
-		#if !flash Rectangle.__pool.release(result); #end
+		#if !flash
+		Rectangle.__pool.release(result);
+		#end
 
 		return value;
 	}

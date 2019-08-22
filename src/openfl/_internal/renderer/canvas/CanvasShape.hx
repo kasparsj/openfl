@@ -1,6 +1,5 @@
 package openfl._internal.renderer.canvas;
 
-import openfl.display.CanvasRenderer;
 import openfl.display.DisplayObject;
 
 @:access(openfl.display.DisplayObject)
@@ -85,7 +84,11 @@ class CanvasShape
 							context.drawImage(canvas, 0, top + centerHeight, left, bottom, 0, renderTop + renderCenterHeight, renderLeft, renderBottom);
 							context.drawImage(canvas, left, top + centerHeight, centerWidth, bottom, renderLeft, renderTop + renderCenterHeight,
 								renderCenterWidth, renderBottom);
-							context.drawImage(canvas, left + centerWidth, top + centerHeight, right, bottom, renderLeft + renderCenterWidth, renderTop
+							context.drawImage(canvas, left
+								+ centerWidth, top
+								+ centerHeight, right, bottom, renderLeft
+								+ renderCenterWidth,
+								renderTop
 								+ renderCenterHeight, renderRight, renderBottom);
 						}
 						else if (centerWidth == 0 && centerHeight != 0)
@@ -109,7 +112,7 @@ class CanvasShape
 					{
 						renderer.setTransform(transform, context);
 
-						if (renderer.__isDOM)
+						if (renderer.__domRenderer != null)
 						{
 							var reverseScale = 1 / renderer.pixelRatio;
 							context.scale(reverseScale, reverseScale);

@@ -2,7 +2,6 @@ package openfl._internal.renderer.cairo;
 
 import openfl._internal.text.TextEngine;
 import openfl.display.BitmapData;
-import openfl.display.CairoRenderer;
 import openfl.display.Graphics;
 import openfl.geom.Matrix;
 import openfl.geom.Rectangle;
@@ -274,8 +273,14 @@ class CairoTextField
 
 								cairo.moveTo(Math.floor(group.offsetX + advance) + 0.5 - textField.scrollH - bounds.x, scrollY + 2.5 - bounds.y);
 								cairo.lineWidth = 1;
-								cairo.lineTo(Math.floor(group.offsetX + advance) + 0.5 - textField.scrollH - bounds.x, scrollY
-									+ TextEngine.getFormatHeight(textField.defaultTextFormat) - 1 - bounds.y);
+								cairo.lineTo(Math.floor(group.offsetX + advance)
+									+ 0.5
+									- textField.scrollH
+									- bounds.x,
+									scrollY
+									+ TextEngine.getFormatHeight(textField.defaultTextFormat)
+									- 1
+									- bounds.y);
 								cairo.stroke();
 							}
 						}
