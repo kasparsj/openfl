@@ -1,20 +1,18 @@
 package openfl._internal.text;
 
-import haxe.io.Bytes;
 #if lime
+import haxe.io.Bytes;
 import lime.math.Vector2;
-import lime.text.harfbuzz.HBBuffer;
-import lime.text.harfbuzz.HBBufferClusterLevel;
-import lime.text.harfbuzz.HBDirection;
-import lime.text.harfbuzz.HBFTFont;
-import lime.text.harfbuzz.HBLanguage;
-import lime.text.harfbuzz.HBScript;
-import lime.text.harfbuzz.HB;
 import lime.text.Font;
 import lime.text.Glyph;
-#else
+import openfl._internal.bindings.harfbuzz.HBBuffer;
+import openfl._internal.bindings.harfbuzz.HBBufferClusterLevel;
+import openfl._internal.bindings.harfbuzz.HBDirection;
+import openfl._internal.bindings.harfbuzz.HBFTFont;
+import openfl._internal.bindings.harfbuzz.HBLanguage;
+import openfl._internal.bindings.harfbuzz.HBScript;
+import openfl._internal.bindings.harfbuzz.HB;
 import openfl.text.Font;
-#end
 
 #if !openfl_debug
 @:fileXml('tags="haxe,release"')
@@ -140,11 +138,12 @@ class TextLayout
 			__hbBuffer.script = script.toHBScript();
 			__hbBuffer.language = new HBLanguage(language);
 			__hbBuffer.clusterLevel = HBBufferClusterLevel.CHARACTERS;
-			#if ((haxe_ver < "4.0.0") || neko || mac || linux || hl)
+			#if (neko || mac || linux || hl)
+			// other targets still uses dummy positions to make UTF8 work
+			// TODO: confirm
 			__hbBuffer.addUTF8(text, 0, -1);
 			#else
-			for (i in 0...text.length)
-				__hbBuffer.add(text.charCodeAt(i), i);
+			__hbBuffer.addUTF16(untyped __cpp__('(uintptr_t){0}', text.wc_str()), text.length, 0, -1);
 			#end
 
 			HB.shape(__hbFont, __hbBuffer);
@@ -497,3 +496,4 @@ class TextLayout
 		}
 	}
 }
+#end

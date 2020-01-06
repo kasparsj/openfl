@@ -1,19 +1,24 @@
 package openfl.display;
 
 #if !flash
+import openfl._internal.renderer.DisplayObjectRendererType;
 import openfl.events.EventDispatcher;
 import openfl.geom.ColorTransform;
 import openfl.geom.Matrix;
 import openfl.geom.Rectangle;
-#if lime
-import lime.graphics.RenderContextType;
-#end
+import openfl.media.Video;
 
 #if !openfl_debug
 @:fileXml('tags="haxe,release"')
 @:noDebug
 #end
 @:allow(openfl._internal.renderer)
+@:access(openfl.display.Bitmap)
+@:access(openfl.display.DisplayObject)
+@:access(openfl.display.TileContainer)
+@:access(openfl.display.Tilemap)
+@:access(openfl.display.Timeline)
+@:access(openfl.media.Video)
 class DisplayObjectRenderer extends EventDispatcher
 {
 	@:noCompletion private var __allowSmoothing:Bool;
@@ -24,7 +29,7 @@ class DisplayObjectRenderer extends EventDispatcher
 	@:noCompletion private var __roundPixels:Bool;
 	@:noCompletion private var __stage:Stage;
 	@:noCompletion private var __transparent:Bool;
-	@SuppressWarnings("checkstyle:Dynamic") @:noCompletion private var __type:#if lime RenderContextType #else Dynamic #end;
+	@:noCompletion private var __type:DisplayObjectRendererType;
 	@:noCompletion private var __worldAlpha:Float;
 	@:noCompletion private var __worldColorTransform:ColorTransform;
 	@:noCompletion private var __worldTransform:Matrix;
@@ -40,6 +45,51 @@ class DisplayObjectRenderer extends EventDispatcher
 	@:noCompletion private function __clear():Void {}
 
 	@:noCompletion private function __drawBitmapData(bitmapData:BitmapData, source:IBitmapDrawable, clipRect:Rectangle):Void {}
+
+	@:noCompletion private function __enterFrame(displayObject:DisplayObject, deltaTime:Int):Void
+	{
+		for (child in displayObject.__childIterator(false))
+		{
+			switch (child.__type)
+			{
+				case BITMAP:
+					#if lime
+					var bitmap:Bitmap = cast child;
+					if (bitmap.__bitmapData != null
+						&& bitmap.__bitmapData.limeImage != null
+						&& bitmap.__bitmapData.limeImage.version != bitmap.__imageVersion)
+					{
+						bitmap.__setRenderDirty();
+					}
+					#end
+
+				case MOVIE_CLIP:
+					var movieClip:MovieClip = cast child;
+					if (movieClip.__timeline != null)
+					{
+						movieClip.__timeline.__enterFrame(deltaTime);
+					}
+
+				case TILEMAP:
+					var tilemap:Tilemap = cast child;
+					if (tilemap.__group.__dirty)
+					{
+						tilemap.__setRenderDirty();
+					}
+
+				case VIDEO:
+					var video:Video = cast child;
+					#if openfl_html5
+					if (video.__renderable && video.__stream != null)
+					{
+						video.__setRenderDirty();
+					}
+					#end
+
+				default:
+			}
+		}
+	}
 
 	@:noCompletion private function __render(object:IBitmapDrawable):Void {}
 

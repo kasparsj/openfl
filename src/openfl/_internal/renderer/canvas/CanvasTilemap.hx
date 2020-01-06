@@ -1,5 +1,6 @@
 package openfl._internal.renderer.canvas;
 
+#if openfl_html5
 import openfl.display.BitmapData;
 import openfl.display.BlendMode;
 import openfl.display.TileContainer;
@@ -7,8 +8,9 @@ import openfl.display.Tilemap;
 import openfl.display.Tileset;
 import openfl.geom.Matrix;
 import openfl.geom.Rectangle;
-#if lime
-// TODO: Avoid use of private APIs
+#if !lime
+import openfl._internal.backend.lime_standalone.ImageCanvasUtil;
+#else
 import lime._internal.graphics.ImageCanvasUtil;
 #end
 
@@ -25,7 +27,7 @@ class CanvasTilemap
 {
 	public static inline function render(tilemap:Tilemap, renderer:CanvasRenderer):Void
 	{
-		#if (js && html5)
+		#if openfl_html5
 		if (!tilemap.__renderable || tilemap.__group.__tiles.length == 0) return;
 
 		var alpha = renderer.__getAlpha(tilemap.__worldAlpha);
@@ -65,7 +67,7 @@ class CanvasTilemap
 			alphaEnabled:Bool, worldAlpha:Float, blendModeEnabled:Bool, defaultBlendMode:BlendMode, cacheBitmapData:BitmapData, source:Dynamic,
 			rect:Rectangle):Void
 	{
-		#if (js && html5)
+		#if (lime && openfl_html5)
 		var context = renderer.context;
 		var roundPixels = renderer.__roundPixels;
 
@@ -141,12 +143,7 @@ class CanvasTilemap
 
 				if (bitmapData != cacheBitmapData)
 				{
-					if (bitmapData.image.buffer.__srcImage == null)
-					{
-						ImageCanvasUtil.convertToCanvas(bitmapData.image);
-					}
-
-					source = bitmapData.image.src;
+					source = bitmapData.__getElement();
 					cacheBitmapData = bitmapData;
 				}
 
@@ -166,3 +163,4 @@ class CanvasTilemap
 		#end
 	}
 }
+#end

@@ -7,8 +7,11 @@ import openfl.display.Shader;
 import openfl.geom.Point;
 import openfl.geom.Rectangle;
 #if lime
-import lime._internal.graphics.ImageCanvasUtil; // TODO
+import lime._internal.graphics.ImageCanvasUtil;
 import lime.math.RGBA;
+#elseif openfl_html5
+import openfl._internal.backend.lime_standalone.ImageCanvasUtil;
+import openfl._internal.backend.lime_standalone.RGBA;
 #end
 
 /**
@@ -147,11 +150,11 @@ import lime.math.RGBA;
 	@:noCompletion private override function __applyFilter(destBitmapData:BitmapData, sourceBitmapData:BitmapData, sourceRect:Rectangle,
 			destPoint:Point):BitmapData
 	{
-		#if lime
-		var sourceImage = sourceBitmapData.image;
-		var image = destBitmapData.image;
+		#if (lime || openfl_html5)
+		var sourceImage = sourceBitmapData.limeImage;
+		var image = destBitmapData.limeImage;
 
-		#if (js && html5)
+		#if openfl_html5
 		ImageCanvasUtil.convertToData(sourceImage);
 		ImageCanvasUtil.convertToData(image);
 		#end
@@ -209,7 +212,7 @@ import lime.math.RGBA;
 			}
 		}
 
-		destBitmapData.image.dirty = true;
+		destBitmapData.limeImage.dirty = true;
 		#end
 		return destBitmapData;
 	}
@@ -272,7 +275,7 @@ private class ColorMatrixShader extends BitmapFilterShader
 	{
 		super();
 
-		#if !macro
+		#if (!macro && openfl_gl)
 		uMultipliers.value = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
 		uOffsets.value = [0, 0, 0, 0];
 		#end
@@ -280,7 +283,7 @@ private class ColorMatrixShader extends BitmapFilterShader
 
 	public function init(matrix:Array<Float>):Void
 	{
-		#if !macro
+		#if (!macro && openfl_gl)
 		var multipliers = uMultipliers.value;
 		var offsets = uOffsets.value;
 

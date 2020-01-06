@@ -2,15 +2,11 @@ package openfl.text;
 
 #if !flash
 import haxe.Timer;
-import openfl._internal.formats.swf.SWFLite;
-import openfl._internal.symbols.DynamicTextSymbol;
-import openfl._internal.symbols.FontSymbol;
 import openfl._internal.formats.html.HTMLParser;
 import openfl._internal.text.TextEngine;
 import openfl._internal.text.TextFormatRange;
 import openfl._internal.text.TextLayoutGroup;
-import openfl._internal.text.UTF8String;
-import openfl._internal.utils.Log;
+import openfl.desktop.Clipboard;
 import openfl.display.DisplayObject;
 import openfl.display.Graphics;
 import openfl.display.InteractiveObject;
@@ -27,12 +23,7 @@ import openfl.net.URLRequest;
 import openfl.ui.Keyboard;
 import openfl.ui.MouseCursor;
 import openfl.Lib;
-#if lime
-import lime.system.Clipboard;
-import lime.ui.KeyCode;
-import lime.ui.KeyModifier;
-#end
-#if (js && html5)
+#if openfl_html5
 import js.html.DivElement;
 #end
 
@@ -380,7 +371,7 @@ class TextField extends InteractiveObject
 		Flash Player and AIR also support explicit character codes, such as
 		&#38; (ASCII ampersand) and &#x20AC; (Unicode € symbol).
 	**/
-	public var htmlText(get, set):UTF8String;
+	public var htmlText(get, set):String;
 
 	/**
 		The number of characters in a text field. A character such as tab
@@ -484,7 +475,7 @@ class TextField extends InteractiveObject
 
 		@default null
 	**/
-	public var restrict(get, set):UTF8String;
+	public var restrict(get, set):String;
 
 	/**
 		The current horizontal scrolling position. If the `scrollH`
@@ -596,7 +587,7 @@ class TextField extends InteractiveObject
 		To get the text in HTML form, use the `htmlText`
 		property.
 	**/
-	public var text(get, set):UTF8String;
+	public var text(get, set):String;
 
 	/**
 		The color of the text in a text field, in hexadecimal format. The
@@ -671,6 +662,7 @@ class TextField extends InteractiveObject
 	**/
 	public var wordWrap(get, set):Bool;
 
+	@:noCompletion private var __backend:TextFieldBackend;
 	@:noCompletion private var __bounds:Rectangle;
 	@:noCompletion private var __caretIndex:Int;
 	@:noCompletion private var __cursorTimer:Timer;
@@ -685,14 +677,13 @@ class TextField extends InteractiveObject
 	@:noCompletion private var __offsetY:Float;
 	@:noCompletion private var __selectionIndex:Int;
 	@:noCompletion private var __showCursor:Bool;
-	@:noCompletion private var __symbol:DynamicTextSymbol;
-	@:noCompletion private var __text:UTF8String;
-	@:noCompletion private var __htmlText:UTF8String;
+	@:noCompletion private var __text:String;
+	@:noCompletion private var __htmlText:String;
 	@:noCompletion private var __textEngine:TextEngine;
 	@:noCompletion private var __textFormat:TextFormat;
     @:noCompletion private var __touchPoints:Map<Int, Dynamic>;
 	
-	#if (js && html5)
+	#if openfl_html5
 	@:noCompletion private var __div:DivElement;
 	@:noCompletion private var __renderedOnCanvasWhileOnDOM:Bool = false;
 	@:noCompletion private var __rawHtmlText:String;
@@ -823,6 +814,8 @@ class TextField extends InteractiveObject
 		__mouseWheelEnabled = true;
 		__text = "";
 
+		doubleClickEnabled = true;
+
 		if (__defaultTextFormat == null)
 		{
 			__defaultTextFormat = new TextFormat("Times New Roman", 12, 0x000000, false, false, false, "", "", TextFormatAlign.LEFT, 0, 0, 0, 0);
@@ -835,11 +828,15 @@ class TextField extends InteractiveObject
 		__textFormat = __defaultTextFormat.clone();
 		__textEngine.textFormatRanges.push(new TextFormatRange(__textFormat, 0, 0));
 
+		__backend = new TextFieldBackend(this);
+
 		addEventListener(MouseEvent.MOUSE_DOWN, this_onMouseDown);
-		addEventListener(MouseEvent.MOUSE_WHEEL, this_onMouseWheel);
 		addEventListener(FocusEvent.FOCUS_IN, this_onFocusIn);
 		addEventListener(FocusEvent.FOCUS_OUT, this_onFocusOut);
 		addEventListener(KeyboardEvent.KEY_DOWN, this_onKeyDown);
+		addEventListener(MouseEvent.MOUSE_WHEEL, this_onMouseWheel);
+
+		addEventListener(MouseEvent.DOUBLE_CLICK, this_onDoubleClick);
 	}
 
 	/**
@@ -913,7 +910,7 @@ class TextField extends InteractiveObject
 		x += scrollH;
 
 		y += __scrollY ();
-		
+
 		for (group in __textEngine.layoutGroups)
 		{
 			if (y >= group.offsetY && y <= group.offsetY + group.height)
@@ -1440,124 +1437,56 @@ class TextField extends InteractiveObject
 		if (beginIndex == 0 && endIndex >= max)
 		{
 			// set text format for the whole textfield
-
 			__textFormat.__merge(format);
 
 			for (i in 0...__textEngine.textFormatRanges.length)
 			{
 				range = __textEngine.textFormatRanges[i];
-				range.format.__merge(__textFormat);
+				range.format.__merge(format);
 			}
 		}
 		else
 		{
-			var index = __textEngine.textFormatRanges.length;
-			var searchIndex;
+			var index = 0;
+			var newRange;
 
-			while (index > 0)
+			while (index < __textEngine.textFormatRanges.length)
 			{
-				index--;
 				range = __textEngine.textFormatRanges[index];
 
 				if (range.start == beginIndex && range.end == endIndex)
 				{
-					// the new incoming text format range matches an existing range exactly, just replace it
-
-					range.format = __textFormat.clone();
+					// set format range matches an existing range exactly
 					range.format.__merge(format);
-
-					__dirty = true;
-					__layoutDirty = true;
-					__setRenderDirty();
-
-					return;
+					break;
 				}
-
-				if (range.start >= beginIndex && range.end <= endIndex)
+				else if (range.start >= beginIndex && range.end <= endIndex)
 				{
-					// the new incoming text format range completely encompasses this existing range, let's remove it
-
-					searchIndex = __textEngine.textFormatRanges.indexOf(range);
-
-					if (searchIndex > -1)
-					{
-						__textEngine.textFormatRanges.splice(searchIndex, 1);
-					}
+					// set format range completely encompasses this existing range
+					range.format.__merge(format);
 				}
-			}
-
-			var prevRange = null, nextRange = null;
-
-			// find the ranges before and after the new incoming range
-
-			if (beginIndex > 0)
-			{
-				for (i in 0...__textEngine.textFormatRanges.length)
+				else if (range.start >= beginIndex && range.start < endIndex && range.end > beginIndex)
 				{
-					range = __textEngine.textFormatRanges[i];
-
-					if (range.end >= beginIndex)
-					{
-						prevRange = range;
-
-						break;
-					}
+					// set format range is within the first part of the range
+					newRange = new TextFormatRange(range.format.clone(), range.start, endIndex);
+					newRange.format.__merge(format);
+					__textEngine.textFormatRanges.insertAt(index, newRange);
+					range.start = endIndex;
+					index++;
 				}
-			}
-
-			if (endIndex < max)
-			{
-				var ni = __textEngine.textFormatRanges.length;
-
-				while (--ni >= 0)
+				else if (range.start < beginIndex && range.end > beginIndex && range.end >= endIndex)
 				{
-					range = __textEngine.textFormatRanges[ni];
-
-					if (range.start <= endIndex)
-					{
-						nextRange = range;
-
-						break;
-					}
-				}
-			}
-
-			if (nextRange == prevRange)
-			{
-				// the new incoming text format range is completely within this existing range, let's divide it up
-
-				nextRange = new TextFormatRange(nextRange.format.clone(), nextRange.start, nextRange.end);
-				__textEngine.textFormatRanges.push(nextRange);
-			}
-
-			if (prevRange != null)
-			{
-				prevRange.end = beginIndex;
-			}
-
-			if (nextRange != null)
-			{
-				nextRange.start = endIndex;
-			}
-
-			var textFormat = __textFormat.clone();
-			textFormat.__merge(format);
-
-			__textEngine.textFormatRanges.push(new TextFormatRange(textFormat, beginIndex, endIndex));
-
-			__textEngine.textFormatRanges.sort(function(a:TextFormatRange, b:TextFormatRange):Int
-			{
-				if (a.start < b.start || a.end < b.end)
-				{
-					return -1;
-				}
-				else if (a.start > b.start || a.end > b.end)
-				{
-					return 1;
+					// set format range is within the second part of the range
+					newRange = new TextFormatRange(range.format.clone(), beginIndex, range.end);
+					newRange.format.__merge(format);
+					__textEngine.textFormatRanges.insertAt(index + 1, newRange);
+					range.end = beginIndex;
+					index++;
 				}
 
-				return 0;
-			});
+				index++;
+				// TODO: Remove duplicates?
+			}
 		}
 
 		__dirty = true;
@@ -1669,11 +1598,7 @@ class TextField extends InteractiveObject
 	{
 		if (__inputEnabled && stage != null)
 		{
-			#if lime
-			stage.window.textInputEnabled = false;
-			stage.window.onTextInput.remove(window_onTextInput);
-			stage.window.onKeyDown.remove(window_onKeyDown);
-			#end
+			__backend.disableInput();
 
 			__inputEnabled = false;
 			__stopCursorTimer();
@@ -1713,21 +1638,12 @@ class TextField extends InteractiveObject
 
 	@:noCompletion private function __enableInput():Void
 	{
-		#if lime
 		if (stage != null)
 		{
-			stage.window.textInputEnabled = true;
+			__backend.enableInput();
 
 			if (!__inputEnabled)
 			{
-				stage.window.textInputEnabled = true;
-
-				if (!stage.window.onTextInput.has(window_onTextInput))
-				{
-					stage.window.onTextInput.add(window_onTextInput);
-					stage.window.onKeyDown.add(window_onKeyDown);
-				}
-
 				__inputEnabled = true;
 				__startCursorTimer();
 			}
@@ -1735,133 +1651,11 @@ class TextField extends InteractiveObject
 			addEventListener (TouchEvent.TOUCH_BEGIN, this_onTouchBegin);
 			__touchPoints = new Map<Int, Dynamic>();
 		}
-		#end
-	}
-
-	@:noCompletion private function __fromSymbol(swf:SWFLite, symbol:DynamicTextSymbol):Void
-	{
-		__symbol = symbol;
-
-		width = symbol.width;
-		height = symbol.height;
-
-		__offsetX = symbol.x;
-		__offsetY = symbol.y;
-
-		multiline = symbol.multiline;
-		wordWrap = symbol.wordWrap;
-		displayAsPassword = symbol.password;
-
-		if (symbol.border)
-		{
-			border = true;
-			background = true;
-		}
-
-		selectable = symbol.selectable;
-
-		if (symbol.input)
-		{
-			type = INPUT;
-		}
-
-		var format = new TextFormat();
-		if (symbol.color != null) format.color = (symbol.color & 0x00FFFFFF);
-		format.size = Math.round(symbol.fontHeight / 20);
-
-		var font:FontSymbol = cast swf.symbols.get(symbol.fontID);
-
-		if (font != null)
-		{
-			// TODO: Bold and italic are handled in the font already
-			// Setting this can cause "extra" bold in HTML5
-
-			// format.bold = font.bold;
-			// format.italic = font.italic;
-			// format.leading = Std.int (font.leading / 20 + (format.size * 0.2) #if flash + 2 #end);
-			// embedFonts = true;
-
-			format.__ascent = ((font.ascent / 20) / 1024);
-			format.__descent = ((font.descent / 20) / 1024);
-		}
-
-		format.font = symbol.fontName;
-
-		var found = false;
-
-		switch (format.font)
-		{
-			case "_sans", "_serif", "_typewriter", "", null:
-				found = true;
-
-			default:
-				for (font in Font.enumerateFonts())
-				{
-					if (font.fontName == format.font)
-					{
-						found = true;
-						break;
-					}
-				}
-		}
-
-		if (!found)
-		{
-			var alpha = ~/[^a-zA-Z]+/g;
-
-			for (font in Font.enumerateFonts())
-			{
-				if (alpha.replace(font.fontName, "").substr(0, symbol.fontName.length) == symbol.fontName)
-				{
-					format.font = font.fontName;
-					found = true;
-					break;
-				}
-			}
-		}
-
-		if (found)
-		{
-			embedFonts = true;
-		}
-		else if (!__missingFontWarning.exists(format.font))
-		{
-			__missingFontWarning[format.font] = true;
-			Log.warn("Could not find required font \"" + format.font + "\", it has not been embedded");
-		}
-
-		if (symbol.align != null)
-		{
-			if (symbol.align == "center") format.align = TextFormatAlign.CENTER;
-			else if (symbol.align == "right") format.align = TextFormatAlign.RIGHT;
-			else if (symbol.align == "justify") format.align = TextFormatAlign.JUSTIFY;
-
-			format.leftMargin = Std.int(symbol.leftMargin / 20);
-			format.rightMargin = Std.int(symbol.rightMargin / 20);
-			format.indent = Std.int(symbol.indent / 20);
-			format.leading = Std.int(symbol.leading / 20);
-		}
-
-		defaultTextFormat = format;
-
-		if (symbol.text != null)
-		{
-			if (symbol.html)
-			{
-				htmlText = symbol.text;
-			}
-			else
-			{
-				text = symbol.text;
-			}
-		}
-
-		// autoSize = (tag.autoSize) ? TextFieldAutoSize.LEFT : TextFieldAutoSize.NONE;
 	}
 
 	@:noCompletion private inline function __getAdvance(position):Float
 	{
-		#if (js && html5)
+		#if openfl_html5
 		return position;
 		#else
 		return position.advance.x;
@@ -2050,6 +1844,7 @@ class TextField extends InteractiveObject
 		return group.endIndex;
 	}
 
+
 	private function __scrollMouseX():Float {
 
 		return scrollH + mouseX;
@@ -2076,6 +1871,31 @@ class TextField extends InteractiveObject
 
 		return y;
 
+	}
+
+
+	@:noCompletion private override function __getRenderBounds(rect:Rectangle, matrix:Matrix):Void
+	{
+		if (__scrollRect == null)
+		{
+			__updateLayout();
+
+			var bounds = Rectangle.__pool.get();
+			bounds.copyFrom(__textEngine.bounds);
+
+			// matrix.tx += __offsetX;
+			// matrix.ty += __offsetY;
+
+			bounds.__transform(bounds, matrix);
+
+			rect.__expand(bounds.x, bounds.y, bounds.width, bounds.height);
+
+			Rectangle.__pool.release(bounds);
+		}
+		else
+		{
+			super.__getRenderBounds(rect, matrix);
+		}
 	}
 
 
@@ -2142,7 +1962,7 @@ class TextField extends InteractiveObject
 
 		__replaceText(startIndex, endIndex, value, restrict);
 
-		var i = startIndex + cast(value, UTF8String).length;
+		var i = startIndex + value.length;
 		if (i > __text.length) i = __text.length;
 
 		setSelection(i, i);
@@ -2261,7 +2081,7 @@ class TextField extends InteractiveObject
 					range.end += offset;
 				}
 			}
-			
+
 			i++;
 		}
 
@@ -2289,7 +2109,7 @@ class TextField extends InteractiveObject
 			__selectionIndex = __caretIndex;
 		}
 
-		var enableInput = #if (js && html5) (DisplayObject.__supportDOM ? __renderedOnCanvasWhileOnDOM : true) #else true #end;
+		var enableInput = #if openfl_html5 (DisplayObject.__supportDOM ? __renderedOnCanvasWhileOnDOM : true) #else true #end;
 
 		if (enableInput)
 		{
@@ -2315,11 +2135,23 @@ class TextField extends InteractiveObject
 
 	@:noCompletion private function __stopTextInput():Void
 	{
-		var disableInput = #if (js && html5) (DisplayObject.__supportDOM ? __renderedOnCanvasWhileOnDOM : true) #else true #end;
+		var disableInput = #if openfl_html5 (DisplayObject.__supportDOM ? __renderedOnCanvasWhileOnDOM : true) #else true #end;
 
 		if (disableInput)
 		{
 			__disableInput();
+		}
+	}
+
+	@:noCompletion private override function __update(transformOnly:Bool, updateChildren:Bool):Void
+	{
+		var transformDirty = __transformDirty;
+
+		__updateSingle(transformOnly, updateChildren);
+
+		if (transformDirty)
+		{
+			__renderTransform.__translateTransformed(__offsetX, __offsetY);
 		}
 	}
 
@@ -2438,7 +2270,7 @@ class TextField extends InteractiveObject
 
 	@:noCompletion private function __updateText(value:String):Void
 	{
-		#if (js && html5)
+		#if openfl_html5
 		if (DisplayObject.__supportDOM && __renderedOnCanvasWhileOnDOM)
 		{
 			__forceCachedBitmapUpdate = __text != value;
@@ -2455,7 +2287,7 @@ class TextField extends InteractiveObject
 			__selectionIndex = __caretIndex = __text.length;
 		}
 
-		if (!__displayAsPassword #if (js && html5) || (DisplayObject.__supportDOM && !__renderedOnCanvasWhileOnDOM) #end)
+		if (!__displayAsPassword #if openfl_html5 || (DisplayObject.__supportDOM && !__renderedOnCanvasWhileOnDOM) #end)
 		{
 			__textEngine.text = __text;
 		}
@@ -2471,12 +2303,6 @@ class TextField extends InteractiveObject
 
 			__textEngine.text = mask;
 		}
-	}
-
-	@:noCompletion private override function __updateTransforms(overrideTransform:Matrix = null):Void
-	{
-		super.__updateTransforms(overrideTransform);
-		__renderTransform.__translateTransformed(__offsetX, __offsetY);
 	}
 
 	// Getters & Setters
@@ -2669,9 +2495,10 @@ class TextField extends InteractiveObject
 		if (value != __textEngine.height)
 		{
 			__setTransformDirty();
+			__setParentRenderDirty();
+			__setRenderDirty();
 			__dirty = true;
 			__layoutDirty = true;
-			__setRenderDirty();
 
 			__textEngine.height = value;
 		}
@@ -2681,7 +2508,7 @@ class TextField extends InteractiveObject
 
 	@:noCompletion private function get_htmlText():String
 	{
-		#if (js && html5)
+		#if openfl_html5
 		return __isHTML ? __rawHtmlText : __text;
 		#else
 		return __text;
@@ -2699,13 +2526,13 @@ class TextField extends InteractiveObject
 
 		__isHTML = true;
 
-		#if (js && html5)
+		#if openfl_html5
 		__rawHtmlText = value;
 		#end
 
 		value = HTMLParser.parse(value, __textFormat, __textEngine.textFormatRanges);
 
-		#if (js && html5)
+		#if openfl_html5
 		if (DisplayObject.__supportDOM)
 		{
 			if (__textEngine.textFormatRanges.length > 1)
@@ -2852,10 +2679,11 @@ class TextField extends InteractiveObject
 		{
 			__dirty = true;
 			__setRenderDirty();
+			__textEngine.scrollH = value;
 			dispatchEvent(new Event(Event.SCROLL));
 		}
 
-		return __textEngine.scrollH = value;
+		return __textEngine.scrollH;
 	}
 
 	@:noCompletion private function get_scrollV():Int
@@ -2867,14 +2695,15 @@ class TextField extends InteractiveObject
 	{
 		__updateLayout();
 
-		if (value != __textEngine.scrollV)
+		if (value > 0 && value != __textEngine.scrollV)
 		{
 			__dirty = true;
 			__setRenderDirty();
+			__textEngine.scrollV = value;
 			dispatchEvent(new Event(Event.SCROLL));
 		}
 
-		return __textEngine.scrollV = value;
+		return __textEngine.scrollV;
 	}
 
 	@:noCompletion private function get_selectable():Bool
@@ -2953,11 +2782,10 @@ class TextField extends InteractiveObject
 			__textEngine.textFormatRanges.splice(1, __textEngine.textFormatRanges.length - 1);
 		}
 
-		var utfValue:UTF8String = value;
 		var range = __textEngine.textFormatRanges[0];
 		range.format = __textFormat;
 		range.start = 0;
-		range.end = utfValue.length;
+		range.end = value.length;
 
 		__isHTML = false;
 
@@ -3043,9 +2871,10 @@ class TextField extends InteractiveObject
 		if (value != __textEngine.width)
 		{
 			__setTransformDirty();
+			__setParentRenderDirty();
+			__setRenderDirty();
 			__dirty = true;
 			__layoutDirty = true;
-			__setRenderDirty();
 
 			__textEngine.width = value;
 		}
@@ -3077,7 +2906,12 @@ class TextField extends InteractiveObject
 
 	@:noCompletion private override function set_x(value:Float):Float
 	{
-		if (value != __transform.tx + __offsetX) __setTransformDirty();
+		if (value != __transform.tx + __offsetX)
+		{
+			__setTransformDirty();
+			__setParentRenderDirty();
+		}
+
 		return __transform.tx = value - __offsetX;
 	}
 
@@ -3088,7 +2922,12 @@ class TextField extends InteractiveObject
 
 	@:noCompletion private override function set_y(value:Float):Float
 	{
-		if (value != __transform.ty + __offsetY) __setTransformDirty();
+		if (value != __transform.ty + __offsetY)
+		{
+			__setTransformDirty();
+			__setParentRenderDirty();
+		}
+
 		return __transform.ty = value - __offsetY;
 	}
 
@@ -3097,7 +2936,7 @@ class TextField extends InteractiveObject
 	{
 		if (stage == null) return;
 
-		if (__textEngine.selectable && __selectionIndex >= 0)
+		if (selectable && __selectionIndex >= 0)
 		{
 			__updateLayout();
 
@@ -3107,16 +2946,20 @@ class TextField extends InteractiveObject
 			{
 				__caretIndex = position;
 
-				#if (js && html5)
+				var setDirty = true;
+
+				#if openfl_html5
 				if (DisplayObject.__supportDOM)
 				{
 					if (__renderedOnCanvasWhileOnDOM)
 					{
 						__forceCachedBitmapUpdate = true;
 					}
+					setDirty = false;
 				}
-				else
 				#end
+
+				if (setDirty)
 				{
 					__dirty = true;
 					__setRenderDirty();
@@ -3154,7 +2997,7 @@ class TextField extends InteractiveObject
 				__stopCursorTimer();
 				__startCursorTimer();
 
-				#if (js && html5)
+				#if openfl_html5
 				if (DisplayObject.__supportDOM && __renderedOnCanvasWhileOnDOM)
 				{
 					__forceCachedBitmapUpdate = true;
@@ -3216,10 +3059,7 @@ class TextField extends InteractiveObject
 		{
 			if (stage != null)
 			{
-				#if lime
-				stage.window.onTextInput.remove(window_onTextInput);
-				stage.window.onKeyDown.remove(window_onKeyDown);
-				#end
+				__backend.stopInput();
 			}
 
 			__inputEnabled = false;
@@ -3236,25 +3076,250 @@ class TextField extends InteractiveObject
 
 	@:noCompletion private function this_onKeyDown(event:KeyboardEvent):Void
 	{
-		#if (lime && !openfl_doc_gen)
-		if (selectable && type != INPUT && event.keyCode == Keyboard.C && (event.commandKey || event.ctrlKey))
+		if (type == INPUT)
+		{
+			switch (event.keyCode)
+			{
+				case Keyboard.ENTER, Keyboard.NUMPAD_ENTER:
+					if (__textEngine.multiline)
+					{
+						var te = new TextEvent(TextEvent.TEXT_INPUT, true, true, "\n");
+
+						dispatchEvent(te);
+
+						if (!te.isDefaultPrevented())
+						{
+							__replaceSelectedText("\n", true);
+
+							dispatchEvent(new Event(Event.CHANGE, true));
+						}
+					}
+
+				case Keyboard.BACKSPACE:
+					if (__selectionIndex == __caretIndex && __caretIndex > 0)
+					{
+						__selectionIndex = __caretIndex - 1;
+					}
+
+					if (__selectionIndex != __caretIndex)
+					{
+						replaceSelectedText("");
+						__selectionIndex = __caretIndex;
+
+						dispatchEvent(new Event(Event.CHANGE, true));
+					}
+
+				case Keyboard.DELETE:
+					if (__selectionIndex == __caretIndex && __caretIndex < __text.length)
+					{
+						__selectionIndex = __caretIndex + 1;
+					}
+
+					if (__selectionIndex != __caretIndex)
+					{
+						replaceSelectedText("");
+						__selectionIndex = __caretIndex;
+
+						dispatchEvent(new Event(Event.CHANGE, true));
+					}
+
+				case Keyboard.LEFT if (selectable):
+					if (event.commandKey)
+					{
+						__caretBeginningOfLine();
+
+						if (!event.shiftKey)
+						{
+							__selectionIndex = __caretIndex;
+						}
+					}
+					else if (event.shiftKey)
+					{
+						__caretPreviousCharacter();
+					}
+					else
+					{
+						if (__selectionIndex == __caretIndex)
+						{
+							__caretPreviousCharacter();
+						}
+						else
+						{
+							__caretIndex = Std.int(Math.min(__caretIndex, __selectionIndex));
+						}
+
+						__selectionIndex = __caretIndex;
+					}
+
+					__updateScrollH();
+					__updateScrollV();
+					__stopCursorTimer();
+					__startCursorTimer();
+
+				case Keyboard.RIGHT if (selectable):
+					if (event.commandKey)
+					{
+						__caretEndOfLine();
+
+						if (!event.shiftKey)
+						{
+							__selectionIndex = __caretIndex;
+						}
+					}
+					else if (event.shiftKey)
+					{
+						__caretNextCharacter();
+					}
+					else
+					{
+						if (__selectionIndex == __caretIndex)
+						{
+							__caretNextCharacter();
+						}
+						else
+						{
+							__caretIndex = Std.int(Math.max(__caretIndex, __selectionIndex));
+						}
+
+						__selectionIndex = __caretIndex;
+					}
+
+					__updateScrollH();
+					__updateScrollV();
+
+					__stopCursorTimer();
+					__startCursorTimer();
+
+				case Keyboard.DOWN if (selectable):
+					if (!__textEngine.multiline) return;
+
+					if (event.shiftKey)
+					{
+						__caretNextLine();
+					}
+					else
+					{
+						if (__selectionIndex == __caretIndex)
+						{
+							__caretNextLine();
+						}
+						else
+						{
+							var lineIndex = getLineIndexOfChar(Std.int(Math.max(__caretIndex, __selectionIndex)));
+							__caretNextLine(lineIndex, Std.int(Math.min(__caretIndex, __selectionIndex)));
+						}
+
+						__selectionIndex = __caretIndex;
+					}
+
+					__updateScrollV();
+
+					__stopCursorTimer();
+					__startCursorTimer();
+
+				case Keyboard.UP if (selectable):
+					if (!__textEngine.multiline) return;
+
+					if (event.shiftKey)
+					{
+						__caretPreviousLine();
+					}
+					else
+					{
+						if (__selectionIndex == __caretIndex)
+						{
+							__caretPreviousLine();
+						}
+						else
+						{
+							var lineIndex = getLineIndexOfChar(Std.int(Math.min(__caretIndex, __selectionIndex)));
+							__caretPreviousLine(lineIndex, Std.int(Math.min(__caretIndex, __selectionIndex)));
+						}
+
+						__selectionIndex = __caretIndex;
+					}
+
+					__updateScrollV();
+
+					__stopCursorTimer();
+					__startCursorTimer();
+
+				case Keyboard.HOME if (selectable):
+					__caretBeginningOfLine();
+					__stopCursorTimer();
+					__startCursorTimer();
+
+				case Keyboard.END if (selectable):
+					__caretEndOfLine();
+					__stopCursorTimer();
+					__startCursorTimer();
+
+				case Keyboard.C if (#if mac event.commandKey #else event.ctrlKey #end):
+					if (__caretIndex != __selectionIndex)
+					{
+						Clipboard.generalClipboard.setData(TEXT_FORMAT, __text.substring(__caretIndex, __selectionIndex));
+					}
+
+				case Keyboard.X if (#if mac event.commandKey #else event.ctrlKey #end):
+					if (__caretIndex != __selectionIndex)
+					{
+						Clipboard.generalClipboard.setData(TEXT_FORMAT, __text.substring(__caretIndex, __selectionIndex));
+
+						replaceSelectedText("");
+						dispatchEvent(new Event(Event.CHANGE, true));
+					}
+
+				#if !js
+				case Keyboard.V:
+					if (#if mac event.commandKey #else event.ctrlKey #end)
+					{
+						if (Clipboard.generalClipboard.getData(TEXT_FORMAT) != null)
+						{
+							var te = new TextEvent(TextEvent.TEXT_INPUT, true, true, Clipboard.generalClipboard.getData(TEXT_FORMAT));
+
+							dispatchEvent(te);
+
+							if (!te.isDefaultPrevented())
+							{
+								__replaceSelectedText(Clipboard.generalClipboard.getData(TEXT_FORMAT), true);
+
+								dispatchEvent(new Event(Event.CHANGE, true));
+							}
+						}
+					}
+					else
+					{
+						// TODO: does this need to occur?
+						__textEngine.textFormatRanges[__textEngine.textFormatRanges.length - 1].end = __text.length;
+					}
+				#end
+
+				case Keyboard.A if (selectable):
+					if (#if mac event.commandKey #else event.ctrlKey #end)
+					{
+						__caretIndex = __text.length;
+						__selectionIndex = 0;
+					}
+
+				default:
+			}
+		}
+		else if (selectable && event.keyCode == Keyboard.C && (event.commandKey || event.ctrlKey))
 		{
 			if (__caretIndex != __selectionIndex)
 			{
-				Clipboard.text = __text.substring(__caretIndex, __selectionIndex);
+				Clipboard.generalClipboard.setData(TEXT_FORMAT, __text.substring(__caretIndex, __selectionIndex));
 			}
 		}
-		#end
 	}
 
-	
-	@:noCompletion private function this_onMouseDown (event:MouseEvent):Void {
-		
+	@:noCompletion private function this_onMouseDown(event:MouseEvent):Void
+	{
 		if ((!selectable && type != INPUT) || (__touchPoints != null && Lambda.count(__touchPoints) > 0)) return;
 
-		__updateLayout ();
-		
-		__caretIndex = __getPosition (mouseX + scrollH, mouseY);
+		__updateLayout();
+
+		__caretIndex = __getPosition(mouseX + scrollH, mouseY);
 		__selectionIndex = __caretIndex;
 
 		if (!DisplayObject.__supportDOM)
@@ -3269,9 +3334,60 @@ class TextField extends InteractiveObject
 
 	@:noCompletion private function this_onMouseWheel(event:MouseEvent):Void
 	{
-		scrollV -= event.delta;
+		if (mouseWheelEnabled)
+		{
+			scrollV -= event.delta;
+		}
 	}
 
+	@:noCompletion private function this_onDoubleClick(event:MouseEvent):Void
+	{
+		if (selectable)
+		{
+			__updateLayout();
+
+			var delimiters:Array<String> = ['\n', '.', '!', '?', ',', ' ', ';', ':', '(', ')', '-', '_', '/'];
+
+			var txtStr:String = __text;
+			var leftPos:Int = -1;
+			var rightPos:Int = txtStr.length;
+			var pos:Int = 0;
+			var startPos:Int = Std.int(Math.max(__caretIndex, 1));
+			if (txtStr.length > 0 && __caretIndex >= 0 && rightPos >= __caretIndex)
+			{
+				for (c in delimiters)
+				{
+					pos = txtStr.lastIndexOf(c, startPos - 1);
+					if (pos > leftPos) leftPos = pos + 1;
+
+					pos = txtStr.indexOf(c, startPos);
+					if (pos < rightPos && pos != -1) rightPos = pos;
+				}
+
+				if (leftPos != rightPos)
+				{
+					setSelection(leftPos, rightPos);
+
+					var setDirty:Bool = true;
+					#if openfl_html5
+					if (DisplayObject.__supportDOM)
+					{
+						if (__renderedOnCanvasWhileOnDOM)
+						{
+							__forceCachedBitmapUpdate = true;
+						}
+						setDirty = false;
+					}
+					#end
+					if (setDirty)
+					{
+						__dirty = true;
+						__setRenderDirty();
+					}
+				}
+			}
+		}
+	}
 
 	@:noCompletion private function this_onTouchBegin(event:TouchEvent):Void {
 
@@ -3281,259 +3397,15 @@ class TextField extends InteractiveObject
 		stage.addEventListener (TouchEvent.TOUCH_END, stage_onTouchEnd);
 
 	}
-
-
-	#if lime
-	@:noCompletion private function window_onKeyDown(key:KeyCode, modifier:KeyModifier):Void
-	{
-		switch (key)
-		{
-			case RETURN, NUMPAD_ENTER:
-				if (__textEngine.multiline)
-				{
-					var te = new TextEvent(TextEvent.TEXT_INPUT, true, true, "\n");
-
-					dispatchEvent(te);
-
-					if (!te.isDefaultPrevented())
-					{
-						__replaceSelectedText("\n", true);
-
-						dispatchEvent(new Event(Event.CHANGE, true));
-					}
-				}
-
-			case BACKSPACE:
-				if (__selectionIndex == __caretIndex && __caretIndex > 0)
-				{
-					__selectionIndex = __caretIndex - 1;
-				}
-
-				if (__selectionIndex != __caretIndex)
-				{
-					replaceSelectedText("");
-					__selectionIndex = __caretIndex;
-
-					dispatchEvent(new Event(Event.CHANGE, true));
-				}
-
-			case DELETE:
-				if (__selectionIndex == __caretIndex && __caretIndex < __text.length)
-				{
-					__selectionIndex = __caretIndex + 1;
-				}
-
-				if (__selectionIndex != __caretIndex)
-				{
-					replaceSelectedText("");
-					__selectionIndex = __caretIndex;
-
-					dispatchEvent(new Event(Event.CHANGE, true));
-				}
-
-			case LEFT if (selectable):
-				if (modifier.metaKey)
-				{
-					__caretBeginningOfLine();
-
-					if (!modifier.shiftKey)
-					{
-						__selectionIndex = __caretIndex;
-					}
-				}
-				else if (modifier.shiftKey)
-				{
-					__caretPreviousCharacter();
-				}
-				else
-				{
-					if (__selectionIndex == __caretIndex)
-					{
-						__caretPreviousCharacter();
-					}
-					else
-					{
-						__caretIndex = Std.int(Math.min(__caretIndex, __selectionIndex));
-					}
-
-					__selectionIndex = __caretIndex;
-				}
-
-				__updateScrollH();
-				__updateScrollV();
-				__stopCursorTimer();
-				__startCursorTimer();
-
-			case RIGHT if (selectable):
-				if (modifier.metaKey)
-				{
-					__caretEndOfLine();
-
-					if (!modifier.shiftKey)
-					{
-						__selectionIndex = __caretIndex;
-					}
-				}
-				else if (modifier.shiftKey)
-				{
-					__caretNextCharacter();
-				}
-				else
-				{
-					if (__selectionIndex == __caretIndex)
-					{
-						__caretNextCharacter();
-					}
-					else
-					{
-						__caretIndex = Std.int(Math.max(__caretIndex, __selectionIndex));
-					}
-
-					__selectionIndex = __caretIndex;
-				}
-
-				__updateScrollH();
-				__updateScrollV();
-
-				__stopCursorTimer();
-				__startCursorTimer();
-
-			case DOWN if (selectable):
-				if (!__textEngine.multiline) return;
-
-				if (modifier.shiftKey)
-				{
-					__caretNextLine();
-				}
-				else
-				{
-					if (__selectionIndex == __caretIndex)
-					{
-						__caretNextLine();
-					}
-					else
-					{
-						var lineIndex = getLineIndexOfChar(Std.int(Math.max(__caretIndex, __selectionIndex)));
-						__caretNextLine(lineIndex, Std.int(Math.min(__caretIndex, __selectionIndex)));
-					}
-
-					__selectionIndex = __caretIndex;
-				}
-
-				__updateScrollV();
-
-				__stopCursorTimer();
-				__startCursorTimer();
-
-			case UP if (selectable):
-				if (!__textEngine.multiline) return;
-
-				if (modifier.shiftKey)
-				{
-					__caretPreviousLine();
-				}
-				else
-				{
-					if (__selectionIndex == __caretIndex)
-					{
-						__caretPreviousLine();
-					}
-					else
-					{
-						var lineIndex = getLineIndexOfChar(Std.int(Math.min(__caretIndex, __selectionIndex)));
-						__caretPreviousLine(lineIndex, Std.int(Math.min(__caretIndex, __selectionIndex)));
-					}
-
-					__selectionIndex = __caretIndex;
-				}
-
-				__updateScrollV();
-
-				__stopCursorTimer();
-				__startCursorTimer();
-
-			case HOME if (selectable):
-				__caretBeginningOfLine();
-				__stopCursorTimer();
-				__startCursorTimer();
-
-			case END if (selectable):
-				__caretEndOfLine();
-				__stopCursorTimer();
-				__startCursorTimer();
-
-			case C:
-				#if lime
-				if (#if mac modifier.metaKey #elseif js modifier.metaKey || modifier.ctrlKey #else modifier.ctrlKey #end)
-				{
-					if (__caretIndex != __selectionIndex)
-					{
-						Clipboard.text = __text.substring(__caretIndex, __selectionIndex);
-					}
-				}
-				#end
-
-			case X:
-				#if lime
-				if (#if mac modifier.metaKey #elseif js modifier.metaKey || modifier.ctrlKey #else modifier.ctrlKey #end)
-				{
-					if (__caretIndex != __selectionIndex)
-					{
-						Clipboard.text = __text.substring(__caretIndex, __selectionIndex);
-
-						replaceSelectedText("");
-						dispatchEvent(new Event(Event.CHANGE, true));
-					}
-				}
-				#end
-
-			#if !js
-			case V:
-				#if lime
-				if (#if mac modifier.metaKey #else modifier.ctrlKey #end)
-				{
-					if (Clipboard.text != null)
-					{
-						var te = new TextEvent(TextEvent.TEXT_INPUT, true, true, Clipboard.text);
-
-						dispatchEvent(te);
-
-						if (!te.isDefaultPrevented())
-						{
-							__replaceSelectedText(Clipboard.text, true);
-
-							dispatchEvent(new Event(Event.CHANGE, true));
-						}
-					}
-				}
-				else
-				{
-					// TODO: does this need to occur?
-					__textEngine.textFormatRanges[__textEngine.textFormatRanges.length - 1].end = __text.length;
-				}
-				#end
-			#end
-
-			case A if (selectable):
-				if (#if mac modifier.metaKey #elseif js modifier.metaKey || modifier.ctrlKey #else modifier.ctrlKey #end)
-				{
-					__caretIndex = __text.length;
-					__selectionIndex = 0;
-				}
-
-			default:
-		}
-	}
-	#end
-
-	@:noCompletion private function window_onTextInput(value:String):Void
-	{
-		__replaceSelectedText(value, true);
-
-		// TODO: Dispatch change if at max chars?
-		dispatchEvent(new Event(Event.CHANGE, true));
-	}
 }
+
+#if lime
+private typedef TextFieldBackend = openfl._internal.backend.lime.LimeTextFieldBackend;
+#elseif openfl_html5
+private typedef TextFieldBackend = openfl._internal.backend.html5.HTML5TextFieldBackend;
+#else
+private typedef TextFieldBackend = openfl._internal.backend.dummy.DummyTextFieldBackend;
+#end
 #else
 typedef TextField = flash.text.TextField;
 #end

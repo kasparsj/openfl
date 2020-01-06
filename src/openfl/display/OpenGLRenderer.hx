@@ -5,8 +5,10 @@ import openfl.display3D.Context3D;
 import openfl.geom.ColorTransform;
 import openfl.geom.Matrix;
 #if lime
-import lime.graphics.WebGLRenderContext;
 import lime.math.Matrix4;
+import openfl._internal.bindings.gl.WebGLRenderingContext;
+#elseif openfl_html5
+import openfl._internal.backend.lime_standalone.WebGLRenderContext in WebGLRenderingContext;
 #end
 
 /**
@@ -25,7 +27,7 @@ class OpenGLRenderer extends DisplayObjectRenderer
 	/**
 		The current OpenGL render context
 	**/
-	public var gl:#if lime WebGLRenderContext #else Dynamic #end;
+	public var gl:WebGLRenderingContext;
 
 	@:noCompletion private function new(context:Context3D, defaultRenderTarget:BitmapData = null)
 	{

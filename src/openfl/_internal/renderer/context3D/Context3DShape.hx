@@ -1,5 +1,6 @@
 package openfl._internal.renderer.context3D;
 
+#if openfl_gl
 import openfl.display.DisplayObject;
 #if gl_stats
 import openfl._internal.renderer.context3D.stats.Context3DStats;
@@ -37,6 +38,12 @@ class Context3DShape
 
 			if (graphics.__bitmap != null && graphics.__visible)
 			{
+				#if !disable_batcher
+				var bitmapData = graphics.__bitmap;
+				var transform = renderer.__getDisplayTransformTempMatrix(graphics.__worldTransform, AUTO);
+				var alpha = renderer.__getAlpha(shape.__worldAlpha);
+				@:privateAccess bitmapData.__backend.pushQuadsToBatcher(renderer.batcher, transform, alpha, shape);
+				#else
 				var context = renderer.context3D;
 				var scale9Grid = shape.__worldScale9Grid;
 
@@ -44,11 +51,9 @@ class Context3DShape
 				renderer.setShader(shader);
 				renderer.applyBitmapData(graphics.__bitmap, true);
 				renderer.applyMatrix(renderer.__getMatrix(graphics.__worldTransform, AUTO));
-				renderer.applyAlpha(shape.__worldAlpha);
+				renderer.applyAlpha(renderer.__getAlpha(shape.__worldAlpha));
 				renderer.applyColorTransform(shape.__worldColorTransform);
 				renderer.updateShader();
-
-				// TODO: scale9Grid
 
 				var vertexBuffer = graphics.__bitmap.getVertexBuffer(context, scale9Grid, shape);
 				if (shader.__position != null) context.setVertexBufferAt(shader.__position.index, vertexBuffer, 0, FLOAT_3);
@@ -61,6 +66,7 @@ class Context3DShape
 				#end
 
 				renderer.__clearShader();
+				#end
 			}
 
 			// renderer.filterManager.popObject (shape);
@@ -80,6 +86,10 @@ class Context3DShape
 
 			if (graphics.__bitmap != null)
 			{
+				#if !disable_batcher
+				renderer.batcher.flush();
+				#end
+
 				var context = renderer.context3D;
 
 				var shader = renderer.__maskShader;
@@ -103,3 +113,4 @@ class Context3DShape
 		}
 	}
 }
+#end

@@ -1,10 +1,12 @@
 package flash.text;
 
 #if flash
-import lime.text.Font in LimeFont;
 import openfl.utils.ByteArray;
+#if lime
+import lime.text.Font in LimeFont;
+#end
 
-extern class Font extends LimeFont
+extern class Font #if lime extends LimeFont #end
 {
 	public var fontName(default, never):String;
 	public var fontStyle(default, never):FontStyle;

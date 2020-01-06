@@ -1,9 +1,10 @@
 package openfl.display3D.textures;
 
 #if !flash
-import openfl._internal.backend.gl.GLFramebuffer;
-import openfl._internal.backend.gl.GLRenderbuffer;
-import openfl._internal.backend.gl.GLTexture;
+import openfl._internal.bindings.gl.GLFramebuffer;
+import openfl._internal.bindings.gl.GLRenderbuffer;
+import openfl._internal.bindings.gl.GLTexture;
+import openfl._internal.bindings.gl.GL;
 import openfl._internal.formats.atf.ATFGPUFormat;
 import openfl._internal.renderer.SamplerState;
 import openfl.display.BitmapData;
@@ -14,6 +15,10 @@ import openfl._internal.utils.Log;
 import lime._internal.graphics.ImageCanvasUtil;
 import lime.graphics.Image;
 import lime.graphics.RenderContext;
+#elseif openfl_html5
+import openfl._internal.backend.lime_standalone.ImageCanvasUtil;
+import openfl._internal.backend.lime_standalone.Image;
+import openfl._internal.backend.lime_standalone.RenderContext;
 #end
 
 /**
@@ -42,9 +47,11 @@ class TextureBase extends EventDispatcher
 	// private var __compressedMemoryUsage:Int;
 	@:noCompletion private var __context:Context3D;
 	@:noCompletion private var __format:Int;
+	#if openfl_gl
 	@:noCompletion private var __glDepthRenderbuffer:GLRenderbuffer;
 	@:noCompletion private var __glFramebuffer:GLFramebuffer;
 	@:noCompletion private var __glStencilRenderbuffer:GLRenderbuffer;
+	#end
 	@:noCompletion private var __height:Int;
 	@:noCompletion private var __internalFormat:Int;
 	// private var __memoryUsage:Int;
@@ -52,8 +59,10 @@ class TextureBase extends EventDispatcher
 	// private var __outputTextureMemoryUsage:Bool = false;
 	@:noCompletion private var __samplerState:SamplerState;
 	@:noCompletion private var __streamingLevels:Int;
-	@SuppressWarnings("checkstyle:Dynamic") @:noCompletion private var __textureContext:#if lime RenderContext #else Dynamic #end;
+	@SuppressWarnings("checkstyle:Dynamic") @:noCompletion private var __textureContext:#if (lime || openfl_html5) RenderContext #else Dynamic #end;
+	#if openfl_gl
 	@:noCompletion private var __textureID:GLTexture;
+	#end
 	@:noCompletion private var __textureTarget:Int;
 	@:noCompletion private var __width:Int;
 
@@ -62,6 +71,8 @@ class TextureBase extends EventDispatcher
 		super();
 
 		__context = context;
+
+		#if openfl_gl
 		var gl = __context.gl;
 		// __textureTarget = target;
 
@@ -70,7 +81,7 @@ class TextureBase extends EventDispatcher
 
 		if (__supportsBGRA == null)
 		{
-			__textureInternalFormat = gl.RGBA;
+			__textureInternalFormat = GL.RGBA;
 
 			var bgraExtension = null;
 			#if (!js || !html5)
@@ -94,13 +105,13 @@ class TextureBase extends EventDispatcher
 			else
 			{
 				__supportsBGRA = false;
-				__textureFormat = gl.RGBA;
+				__textureFormat = GL.RGBA;
 			}
 
 			__compressedFormats = new Map();
 			__compressedFormatsAlpha = new Map();
 
-			#if (js && html5)
+			#if openfl_html5
 			var dxtExtension = gl.getExtension("WEBGL_compressed_texture_s3tc");
 			var etc1Extension = gl.getExtension("WEBGL_compressed_texture_etc1");
 			// WEBGL_compressed_texture_pvrtc is not available on iOS Safari
@@ -119,7 +130,7 @@ class TextureBase extends EventDispatcher
 
 			if (etc1Extension != null)
 			{
-				#if (js && html5)
+				#if openfl_html5
 				__compressedFormats[ATFGPUFormat.ETC1] = etc1Extension.COMPRESSED_RGB_ETC1_WEBGL;
 				__compressedFormatsAlpha[ATFGPUFormat.ETC1] = etc1Extension.COMPRESSED_RGB_ETC1_WEBGL;
 				#else
@@ -137,6 +148,7 @@ class TextureBase extends EventDispatcher
 
 		__internalFormat = __textureInternalFormat;
 		__format = __textureFormat;
+		#end
 
 		// __memoryUsage = 0;
 		// __compressedMemoryUsage = 0;
@@ -148,6 +160,7 @@ class TextureBase extends EventDispatcher
 	**/
 	public function dispose():Void
 	{
+		#if openfl_gl
 		var gl = __context.gl;
 
 		if (__alphaTexture != null)
@@ -171,8 +184,10 @@ class TextureBase extends EventDispatcher
 		{
 			gl.deleteRenderbuffer(__glStencilRenderbuffer);
 		}
+		#end
 	}
 
+	#if openfl_gl
 	@SuppressWarnings("checkstyle:Dynamic")
 	@:noCompletion private function __getGLFramebuffer(enableDepthAndStencil:Bool, antiAlias:Int, surfaceSelector:Int):GLFramebuffer
 	{
@@ -182,13 +197,13 @@ class TextureBase extends EventDispatcher
 		{
 			__glFramebuffer = gl.createFramebuffer();
 			__context.__bindGLFramebuffer(__glFramebuffer);
-			gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, __textureID, 0);
+			gl.framebufferTexture2D(GL.FRAMEBUFFER, GL.COLOR_ATTACHMENT0, GL.TEXTURE_2D, __textureID, 0);
 
 			if (__context.__enableErrorChecking)
 			{
-				var code = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+				var code = gl.checkFramebufferStatus(GL.FRAMEBUFFER);
 
-				if (code != gl.FRAMEBUFFER_COMPLETE)
+				if (code != GL.FRAMEBUFFER_COMPLETE)
 				{
 					Log.warn('Error: Context3D.setRenderToTexture status:${code} width:${__width} height:${__height}');
 				}
@@ -204,64 +219,69 @@ class TextureBase extends EventDispatcher
 				__glDepthRenderbuffer = gl.createRenderbuffer();
 				__glStencilRenderbuffer = __glDepthRenderbuffer;
 
-				gl.bindRenderbuffer(gl.RENDERBUFFER, __glDepthRenderbuffer);
-				gl.renderbufferStorage(gl.RENDERBUFFER, Context3D.__glDepthStencil, __width, __height);
-				gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_STENCIL_ATTACHMENT, gl.RENDERBUFFER, __glDepthRenderbuffer);
+				gl.bindRenderbuffer(GL.RENDERBUFFER, __glDepthRenderbuffer);
+				gl.renderbufferStorage(GL.RENDERBUFFER, Context3D.__glDepthStencil, __width, __height);
+				gl.framebufferRenderbuffer(GL.FRAMEBUFFER, GL.DEPTH_STENCIL_ATTACHMENT, GL.RENDERBUFFER, __glDepthRenderbuffer);
 			}
 			else
 			{
 				__glDepthRenderbuffer = gl.createRenderbuffer();
 				__glStencilRenderbuffer = gl.createRenderbuffer();
 
-				gl.bindRenderbuffer(gl.RENDERBUFFER, __glDepthRenderbuffer);
-				gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, __width, __height);
-				gl.bindRenderbuffer(gl.RENDERBUFFER, __glStencilRenderbuffer);
-				gl.renderbufferStorage(gl.RENDERBUFFER, gl.STENCIL_INDEX8, __width, __height);
+				gl.bindRenderbuffer(GL.RENDERBUFFER, __glDepthRenderbuffer);
+				gl.renderbufferStorage(GL.RENDERBUFFER, GL.DEPTH_COMPONENT16, __width, __height);
+				gl.bindRenderbuffer(GL.RENDERBUFFER, __glStencilRenderbuffer);
+				gl.renderbufferStorage(GL.RENDERBUFFER, GL.STENCIL_INDEX8, __width, __height);
 
-				gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, __glDepthRenderbuffer);
-				gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.STENCIL_ATTACHMENT, gl.RENDERBUFFER, __glStencilRenderbuffer);
+				gl.framebufferRenderbuffer(GL.FRAMEBUFFER, GL.DEPTH_ATTACHMENT, GL.RENDERBUFFER, __glDepthRenderbuffer);
+				gl.framebufferRenderbuffer(GL.FRAMEBUFFER, GL.STENCIL_ATTACHMENT, GL.RENDERBUFFER, __glStencilRenderbuffer);
 			}
 
 			if (__context.__enableErrorChecking)
 			{
-				var code = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+				var code = gl.checkFramebufferStatus(GL.FRAMEBUFFER);
 
-				if (code != gl.FRAMEBUFFER_COMPLETE)
+				if (code != GL.FRAMEBUFFER_COMPLETE)
 				{
 					Log.warn('Error: Context3D.setRenderToTexture status:${code} width:${__width} height:${__height}');
 				}
 			}
 
-			gl.bindRenderbuffer(gl.RENDERBUFFER, null);
+			gl.bindRenderbuffer(GL.RENDERBUFFER, null);
 		}
 
 		return __glFramebuffer;
 	}
+	#end
 
-	#if lime
+	#if (lime || openfl_html5)
 	@:noCompletion private function __getImage(bitmapData:BitmapData):Image
 	{
-		var image = bitmapData.image;
+		#if lime
+		var image = bitmapData.limeImage;
+		#elseif openfl_html5
+		var image = @:privateAccess bitmapData.__backend.image;
+		#end
 
 		if (!bitmapData.__isValid || image == null)
 		{
 			return null;
 		}
 
-		#if (js && html5)
+		#if openfl_html5
 		ImageCanvasUtil.sync(image, false);
 		#end
 
-		#if (js && html5)
+		#if (openfl_gl && openfl_html5)
 		var gl = __context.gl;
 
 		if (image.type != DATA && !image.premultiplied)
 		{
-			gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, 1);
+			gl.pixelStorei(GL.UNPACK_PREMULTIPLY_ALPHA_WEBGL, 1);
 		}
 		else if (!image.premultiplied && image.transparent)
 		{
-			gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, 0);
+			gl.pixelStorei(GL.UNPACK_PREMULTIPLY_ALPHA_WEBGL, 0);
 			image = image.clone();
 			image.premultiplied = true;
 		}
@@ -292,18 +312,21 @@ class TextureBase extends EventDispatcher
 	}
 	#end
 
+	#if openfl_gl
 	@:noCompletion private function __getTexture():GLTexture
 	{
 		return __textureID;
 	}
+	#end
 
 	@:noCompletion private function __setSamplerState(state:SamplerState):Bool
 	{
+		#if openfl_gl
 		if (!state.equals(__samplerState))
 		{
 			var gl = __context.gl;
 
-			if (__textureTarget == __context.gl.TEXTURE_CUBE_MAP) __context.__bindGLTextureCubeMap(__textureID);
+			if (__textureTarget == GL.TEXTURE_CUBE_MAP) __context.__bindGLTextureCubeMap(__textureID);
 			else
 				__context.__bindGLTexture2D(__textureID);
 
@@ -312,17 +335,17 @@ class TextureBase extends EventDispatcher
 			switch (state.wrap)
 			{
 				case CLAMP:
-					wrapModeS = gl.CLAMP_TO_EDGE;
-					wrapModeT = gl.CLAMP_TO_EDGE;
+					wrapModeS = GL.CLAMP_TO_EDGE;
+					wrapModeT = GL.CLAMP_TO_EDGE;
 				case CLAMP_U_REPEAT_V:
-					wrapModeS = gl.CLAMP_TO_EDGE;
-					wrapModeT = gl.REPEAT;
+					wrapModeS = GL.CLAMP_TO_EDGE;
+					wrapModeT = GL.REPEAT;
 				case REPEAT:
-					wrapModeS = gl.REPEAT;
-					wrapModeT = gl.REPEAT;
+					wrapModeS = GL.REPEAT;
+					wrapModeT = GL.REPEAT;
 				case REPEAT_U_CLAMP_V:
-					wrapModeS = gl.REPEAT;
-					wrapModeT = gl.CLAMP_TO_EDGE;
+					wrapModeS = GL.REPEAT;
+					wrapModeT = GL.CLAMP_TO_EDGE;
 				default:
 					throw new Error("wrap bad enum");
 			}
@@ -332,27 +355,27 @@ class TextureBase extends EventDispatcher
 			switch (state.filter)
 			{
 				case NEAREST:
-					magFilter = gl.NEAREST;
+					magFilter = GL.NEAREST;
 				default:
-					magFilter = gl.LINEAR;
+					magFilter = GL.LINEAR;
 			}
 
 			switch (state.mipfilter)
 			{
 				case MIPLINEAR:
-					minFilter = state.filter == NEAREST ? gl.NEAREST_MIPMAP_LINEAR : gl.LINEAR_MIPMAP_LINEAR;
+					minFilter = state.filter == NEAREST ? GL.NEAREST_MIPMAP_LINEAR : GL.LINEAR_MIPMAP_LINEAR;
 				case MIPNEAREST:
-					minFilter = state.filter == NEAREST ? gl.NEAREST_MIPMAP_NEAREST : gl.LINEAR_MIPMAP_NEAREST;
+					minFilter = state.filter == NEAREST ? GL.NEAREST_MIPMAP_NEAREST : GL.LINEAR_MIPMAP_NEAREST;
 				case Context3DMipFilter.MIPNONE:
-					minFilter = state.filter == NEAREST ? gl.NEAREST : gl.LINEAR;
+					minFilter = state.filter == NEAREST ? GL.NEAREST : GL.LINEAR;
 				default:
 					throw new Error("mipfiter bad enum");
 			}
 
-			gl.texParameteri(__textureTarget, gl.TEXTURE_MIN_FILTER, minFilter);
-			gl.texParameteri(__textureTarget, gl.TEXTURE_MAG_FILTER, magFilter);
-			gl.texParameteri(__textureTarget, gl.TEXTURE_WRAP_S, wrapModeS);
-			gl.texParameteri(__textureTarget, gl.TEXTURE_WRAP_T, wrapModeT);
+			gl.texParameteri(__textureTarget, GL.TEXTURE_MIN_FILTER, minFilter);
+			gl.texParameteri(__textureTarget, GL.TEXTURE_MAG_FILTER, magFilter);
+			gl.texParameteri(__textureTarget, GL.TEXTURE_WRAP_S, wrapModeS);
+			gl.texParameteri(__textureTarget, GL.TEXTURE_WRAP_T, wrapModeT);
 
 			if (state.lodBias != 0.0)
 			{
@@ -365,22 +388,24 @@ class TextureBase extends EventDispatcher
 
 			return true;
 		}
+		#end
 
 		return false;
 	}
 
-	#if lime
+	#if (lime || openfl_html5)
 	@:noCompletion private function __uploadFromImage(image:Image):Void
 	{
+		#if openfl_gl
 		var gl = __context.gl;
 		var internalFormat, format;
 
-		if (__textureTarget != gl.TEXTURE_2D) return;
+		if (__textureTarget != GL.TEXTURE_2D) return;
 
 		if (image.buffer.bitsPerPixel == 1)
 		{
-			internalFormat = gl.ALPHA;
-			format = gl.ALPHA;
+			internalFormat = GL.ALPHA;
+			format = GL.ALPHA;
 		}
 		else
 		{
@@ -390,14 +415,14 @@ class TextureBase extends EventDispatcher
 
 		__context.__bindGLTexture2D(__textureID);
 
-		#if (js && html5)
+		#if openfl_html5
 		if (image.type != DATA && !image.premultiplied)
 		{
-			gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, 1);
+			gl.pixelStorei(GL.UNPACK_PREMULTIPLY_ALPHA_WEBGL, 1);
 		}
 		else if (!image.premultiplied && image.transparent)
 		{
-			gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, 1);
+			gl.pixelStorei(GL.UNPACK_PREMULTIPLY_ALPHA_WEBGL, 1);
 			// gl.pixelStorei (gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, 0);
 			// textureImage = textureImage.clone ();
 			// textureImage.premultiplied = true;
@@ -405,17 +430,18 @@ class TextureBase extends EventDispatcher
 
 		if (image.type == DATA)
 		{
-			gl.texImage2D(gl.TEXTURE_2D, 0, internalFormat, image.buffer.width, image.buffer.height, 0, format, gl.UNSIGNED_BYTE, image.data);
+			gl.texImage2D(GL.TEXTURE_2D, 0, internalFormat, image.buffer.width, image.buffer.height, 0, format, GL.UNSIGNED_BYTE, image.data);
 		}
 		else
 		{
-			gl.texImage2D(gl.TEXTURE_2D, 0, internalFormat, format, gl.UNSIGNED_BYTE, image.src);
+			gl.texImage2D(GL.TEXTURE_2D, 0, internalFormat, format, GL.UNSIGNED_BYTE, image.src);
 		}
 		#else
-		gl.texImage2D(gl.TEXTURE_2D, 0, internalFormat, image.buffer.width, image.buffer.height, 0, format, gl.UNSIGNED_BYTE, image.data);
+		gl.texImage2D(GL.TEXTURE_2D, 0, internalFormat, image.buffer.width, image.buffer.height, 0, format, GL.UNSIGNED_BYTE, image.data);
 		#end
 
 		__context.__bindGLTexture2D(null);
+		#end
 	}
 	#end
 }

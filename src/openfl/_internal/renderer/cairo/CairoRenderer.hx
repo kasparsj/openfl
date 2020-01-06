@@ -1,10 +1,11 @@
 package openfl._internal.renderer.cairo;
 
-import lime.graphics.cairo.Cairo;
-import lime.graphics.cairo.CairoFilter;
-import lime.graphics.cairo.CairoOperator;
-import lime.graphics.cairo.CairoPattern;
+#if openfl_cairo
 import lime.math.Matrix3;
+import openfl._internal.bindings.cairo.Cairo;
+import openfl._internal.bindings.cairo.CairoFilter;
+import openfl._internal.bindings.cairo.CairoOperator;
+import openfl._internal.bindings.cairo.CairoPattern;
 import openfl.display.Bitmap;
 import openfl.display.BitmapData;
 import openfl.display.BlendMode;
@@ -113,9 +114,14 @@ class CairoRenderer extends CairoRendererAPI
 
 	private override function __drawBitmapData(bitmapData:BitmapData, source:IBitmapDrawable, clipRect:Rectangle):Void
 	{
+		var clipMatrix = null;
+
 		if (clipRect != null)
 		{
-			__pushMaskRect(clipRect, source.__renderTransform);
+			clipMatrix = Matrix.__pool.get();
+			clipMatrix.copyFrom(__worldTransform);
+			clipMatrix.invert();
+			__pushMaskRect(clipRect, clipMatrix);
 		}
 
 		if (source == bitmapData)
@@ -131,12 +137,12 @@ class CairoRenderer extends CairoRendererAPI
 
 		cairo.target.flush();
 
-		bitmapData.image.dirty = true;
-		bitmapData.image.version++;
+		bitmapData.__setDirty();
 
 		if (clipRect != null)
 		{
 			__popMaskRect();
+			Matrix.__pool.release(clipMatrix);
 		}
 	}
 
@@ -238,9 +244,9 @@ class CairoRenderer extends CairoRendererAPI
 	{
 		__updateCacheBitmap(bitmap, /*!__worldColorTransform.__isDefault ()*/ false);
 
-		if (bitmap.__bitmapData != null && bitmap.__bitmapData.image != null)
+		if (bitmap.__bitmapData != null && bitmap.__bitmapData.__getSurface() != null)
 		{
-			bitmap.__imageVersion = bitmap.__bitmapData.image.version;
+			bitmap.__imageVersion = bitmap.__bitmapData.__getVersion();
 		}
 
 		if (bitmap.__cacheBitmap != null && !bitmap.__isCacheBitmapRender)
@@ -288,7 +294,7 @@ class CairoRenderer extends CairoRendererAPI
 			{
 				case BITMAP:
 					__renderBitmap(cast object);
-				case DISPLAY_OBJECT_CONTAINER:
+				case DISPLAY_OBJECT_CONTAINER, MOVIE_CLIP:
 					__renderDisplayObjectContainer(cast object);
 				case DISPLAY_OBJECT, SHAPE:
 					__renderShape(cast object);
@@ -343,21 +349,24 @@ class CairoRenderer extends CairoRendererAPI
 
 		__pushMaskObject(container);
 
+		var child = container.__firstChild;
 		if (__stage != null)
 		{
-			for (child in container.__children)
+			while (child != null)
 			{
 				__renderDisplayObject(child);
 				child.__renderDirty = false;
+				child = child.__nextSibling;
 			}
 
 			container.__renderDirty = false;
 		}
 		else
 		{
-			for (child in container.__children)
+			while (child != null)
 			{
 				__renderDisplayObject(child);
+				child = child.__nextSibling;
 			}
 		}
 
@@ -373,7 +382,7 @@ class CairoRenderer extends CairoRendererAPI
 				case BITMAP:
 					cairo.rectangle(0, 0, mask.width, mask.height);
 
-				case DISPLAY_OBJECT_CONTAINER:
+				case DISPLAY_OBJECT_CONTAINER, MOVIE_CLIP:
 					var container:DisplayObjectContainer = cast mask;
 					container.__cleanupRemovedChildren();
 
@@ -382,9 +391,11 @@ class CairoRenderer extends CairoRendererAPI
 						CairoGraphics.renderMask(container.__graphics, this);
 					}
 
-					for (child in container.__children)
+					var child = container.__firstChild;
+					while (child != null)
 					{
 						__renderMask(child);
+						child = child.__nextSibling;
 					}
 
 				case DOM_ELEMENT:
@@ -427,7 +438,7 @@ class CairoRenderer extends CairoRendererAPI
 
 	private function __renderTextField(textField:TextField):Void
 	{
-		__updateCacheBitmap(textField, /*!__worldColorTransform.__isDefault ()*/ false);
+		__updateCacheBitmap(textField, textField.__dirty);
 
 		if (textField.__cacheBitmap != null && !textField.__isCacheBitmapRender)
 		{
@@ -553,7 +564,7 @@ class CairoRenderer extends CairoRendererAPI
 			if (__worldColorTransform != null) colorTransform.__combine(__worldColorTransform);
 
 			var needRender = (object.__cacheBitmap == null
-				|| (object.__renderDirty && (force || (object.__children != null && object.__children.length > 0)))
+				|| (object.__renderDirty && (force || object.__firstChild != null))
 				|| object.opaqueBackground != object.__cacheBitmapBackground)
 				|| (object.__graphics != null && object.__graphics.__softwareDirty)
 				|| !object.__cacheBitmapColorTransform.__equals(colorTransform, true);
@@ -581,8 +592,8 @@ class CairoRenderer extends CairoRendererAPI
 
 			if (!needRender
 				&& object.__cacheBitmapData != null
-				&& object.__cacheBitmapData.image != null
-				&& object.__cacheBitmapData.image.version < object.__cacheBitmapData.__textureVersion)
+				&& object.__cacheBitmapData.__getSurface() != null
+				&& object.__cacheBitmapData.__getVersion() < object.__cacheBitmapData.__textureVersion)
 			{
 				needRender = true;
 			}
@@ -717,7 +728,7 @@ class CairoRenderer extends CairoRendererAPI
 			{
 				if (object.__cacheBitmapRendererSW == null || object.__cacheBitmapRendererSW.__type != CAIRO)
 				{
-					if (object.__cacheBitmapData.image == null)
+					if (object.__cacheBitmapData.limeImage == null)
 					{
 						var color = object.opaqueBackground != null ? (0xFF << 24) | object.opaqueBackground : 0;
 						object.__cacheBitmapData = new BitmapData(bitmapWidth, bitmapHeight, true, color);
@@ -774,7 +785,7 @@ class CairoRenderer extends CairoRendererAPI
 					if (needSecondBitmapData)
 					{
 						if (object.__cacheBitmapData2 == null
-							|| object.__cacheBitmapData2.image == null
+							|| object.__cacheBitmapData2.limeImage == null
 							|| bitmapWidth > object.__cacheBitmapData2.width
 							|| bitmapHeight > object.__cacheBitmapData2.height)
 						{
@@ -794,7 +805,7 @@ class CairoRenderer extends CairoRendererAPI
 					if (needCopyOfOriginal)
 					{
 						if (object.__cacheBitmapData3 == null
-							|| object.__cacheBitmapData3.image == null
+							|| object.__cacheBitmapData3.limeImage == null
 							|| bitmapWidth > object.__cacheBitmapData3.width
 							|| bitmapHeight > object.__cacheBitmapData3.height)
 						{
@@ -885,3 +896,4 @@ class CairoRenderer extends CairoRendererAPI
 		return updated;
 	}
 }
+#end

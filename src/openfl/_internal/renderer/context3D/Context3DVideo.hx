@@ -1,5 +1,7 @@
 package openfl._internal.renderer.context3D;
 
+#if openfl_gl
+import openfl._internal.bindings.gl.GL;
 import openfl.media.Video;
 #if gl_stats
 import openfl._internal.renderer.context3D.stats.Context3DStats;
@@ -22,10 +24,10 @@ class Context3DVideo
 
 	public static function render(video:Video, renderer:Context3DRenderer):Void
 	{
-		#if (js && html5)
+		#if openfl_html5
 		if (!video.__renderable || video.__worldAlpha <= 0 || video.__stream == null) return;
 
-		if (video.__stream.__video != null)
+		if (@:privateAccess video.__stream.__backend.video != null)
 		{
 			var context = renderer.context3D;
 			var gl = context.gl;
@@ -46,13 +48,13 @@ class Context3DVideo
 			// shader.uImage0.input = bitmap.__bitmapData;
 			// shader.uImage0.smoothing = renderer.__allowSmoothing && (bitmap.smoothing || renderer.__upscaled);
 			renderer.applyMatrix(renderer.__getMatrix(video.__renderTransform, AUTO));
-			renderer.applyAlpha(video.__worldAlpha);
+			renderer.applyAlpha(renderer.__getAlpha(video.__worldAlpha));
 			renderer.applyColorTransform(video.__worldColorTransform);
 
 			if (shader.__textureSize != null)
 			{
-				__textureSizeValue[0] = (video.__stream != null) ? video.__stream.__video.videoWidth : 0;
-				__textureSizeValue[1] = (video.__stream != null) ? video.__stream.__video.videoHeight : 0;
+				__textureSizeValue[0] = (video.__stream != null) ? @:privateAccess video.__stream.__backend.video.videoWidth : 0;
+				__textureSizeValue[1] = (video.__stream != null) ? @:privateAccess video.__stream.__backend.video.videoHeight : 0;
 				shader.__textureSize.value = __textureSizeValue;
 			}
 
@@ -64,13 +66,13 @@ class Context3DVideo
 
 			if (video.smoothing)
 			{
-				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+				gl.texParameteri(GL.TEXTURE_2D, GL.TEXTURE_MAG_FILTER, GL.LINEAR);
+				gl.texParameteri(GL.TEXTURE_2D, GL.TEXTURE_MIN_FILTER, GL.LINEAR);
 			}
 			else
 			{
-				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+				gl.texParameteri(GL.TEXTURE_2D, GL.TEXTURE_MAG_FILTER, GL.NEAREST);
+				gl.texParameteri(GL.TEXTURE_2D, GL.TEXTURE_MIN_FILTER, GL.NEAREST);
 			}
 
 			var vertexBuffer = video.__getVertexBuffer(context);
@@ -93,10 +95,10 @@ class Context3DVideo
 
 	public static function renderMask(video:Video, renderer:Context3DRenderer):Void
 	{
-		#if (js && html5)
+		#if openfl_html5
 		if (video.__stream == null) return;
 
-		if (video.__stream.__video != null)
+		if (@:privateAccess video.__stream.__backend.video != null)
 		{
 			var context = renderer.context3D;
 			var gl = context.gl;
@@ -122,3 +124,4 @@ class Context3DVideo
 		#end
 	}
 }
+#end

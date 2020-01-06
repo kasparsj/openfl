@@ -1,11 +1,8 @@
 package openfl.geom;
 
 #if !flash
+import openfl._internal.bindings.typedarray.Float32Array;
 import openfl._internal.utils.ObjectPool;
-#if lime
-import openfl._internal.utils.Float32Array;
-import lime.math.ColorMatrix;
-#end
 
 /**
 	The ColorTransform class lets you adjust the color values in a display
@@ -53,7 +50,7 @@ import lime.math.ColorMatrix;
 #end
 class ColorTransform
 {
-	#if lime
+	#if (lime || openfl_html5)
 	@:noCompletion private static var __limeColorMatrix:Float32Array;
 	#end
 	@:noCompletion private static var __pool:ObjectPool<ColorTransform> = new ObjectPool<ColorTransform>(function() return new ColorTransform(),
@@ -254,10 +251,10 @@ class ColorTransform
 
 	@:noCompletion private function __invert():Void
 	{
-		redMultiplier = 1 / redMultiplier;
-		greenMultiplier = 1 / greenMultiplier;
-		blueMultiplier = 1 / blueMultiplier;
-		alphaMultiplier = 1 / alphaMultiplier;
+		redMultiplier = redMultiplier != 0 ? 1 / redMultiplier : 1;
+		greenMultiplier = greenMultiplier != 0 ? 1 / greenMultiplier : 1;
+		blueMultiplier = blueMultiplier != 0 ? 1 / blueMultiplier : 1;
+		alphaMultiplier = alphaMultiplier != 0 ? 1 / alphaMultiplier : 1;
 		redOffset = -redOffset;
 		greenOffset = -greenOffset;
 		blueOffset = -blueOffset;
@@ -327,8 +324,8 @@ class ColorTransform
 		return color;
 	}
 
-	#if lime
-	@:noCompletion private function __toLimeColorMatrix():ColorMatrix
+	#if (lime || openfl_html5)
+	@:noCompletion private function __toLimeColorMatrix():Float32Array
 	{
 		if (__limeColorMatrix == null)
 		{

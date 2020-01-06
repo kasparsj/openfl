@@ -83,8 +83,6 @@ class Tilemap extends #if !flash DisplayObject #else Bitmap implements IDisplayO
 	@:noCompletion private var __group:TileContainer;
 	@:noCompletion private var __tileset:Tileset;
 	#if !flash
-	@:noCompletion private var __buffer:Context3DBuffer;
-	@:noCompletion private var __bufferDirty:Bool;
 	@:noCompletion private var __height:Int;
 	@:noCompletion private var __width:Int;
 	#end
@@ -374,16 +372,6 @@ class Tilemap extends #if !flash DisplayObject #else Bitmap implements IDisplayO
 	}
 
 	#if !flash
-	@:noCompletion private override function __enterFrame(deltaTime:Int):Void
-	{
-		if (__group.__dirty)
-		{
-			__setRenderDirty();
-		}
-	}
-	#end
-
-	#if !flash
 	@:noCompletion private override function __getBounds(rect:Rectangle, matrix:Matrix):Void
 	{
 		var bounds = Rectangle.__pool.get();
@@ -439,6 +427,7 @@ class Tilemap extends #if !flash DisplayObject #else Bitmap implements IDisplayO
 	@:noCompletion private override function set_height(value:Float):Float
 	{
 		__height = Std.int(value);
+		__localBoundsDirty = true;
 		return __height * Math.abs(scaleY);
 	}
 	#else
@@ -490,6 +479,7 @@ class Tilemap extends #if !flash DisplayObject #else Bitmap implements IDisplayO
 	@:noCompletion private override function set_width(value:Float):Float
 	{
 		__width = Std.int(value);
+		__localBoundsDirty = true;
 		return __width * Math.abs(__scaleX);
 	}
 	#else

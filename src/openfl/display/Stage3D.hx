@@ -14,9 +14,12 @@ import openfl.geom.Matrix3D;
 import openfl.Vector;
 #if lime
 import lime.graphics.RenderContext;
+import openfl._internal.bindings.gl.WebGLRenderingContext;
+#elseif openfl_html5
+import openfl._internal.backend.lime_standalone.RenderContext;
+import openfl._internal.backend.lime_standalone.WebGLRenderContext in WebGLRenderingContext;
 #end
-#if (js && html5)
-import js.html.webgl.RenderingContext;
+#if openfl_html5
 import js.html.CanvasElement;
 import js.html.CSSStyleDeclaration;
 import js.Browser;
@@ -185,11 +188,13 @@ class Stage3D extends EventDispatcher
 	@:noCompletion private var __width:Int;
 	@:noCompletion private var __x:Float;
 	@:noCompletion private var __y:Float;
-	#if (js && html5)
+	#if openfl_html5
 	@:noCompletion private var __canvas:CanvasElement;
-	@:noCompletion private var __renderContext:RenderContext;
 	@:noCompletion private var __style:CSSStyleDeclaration;
-	@:noCompletion private var __webgl:RenderingContext;
+	@:noCompletion private var __webgl:WebGLRenderingContext;
+	#end
+	#if (lime || openfl_html5)
+	@:noCompletion private var __renderContext:RenderContext;
 	#end
 
 	#if openfljs
@@ -377,8 +382,8 @@ class Stage3D extends EventDispatcher
 			#end
 			__dispatchCreate();
 		}
-		#if (lime && (js && html5))
-		else if (false && __stage.window.context.type == DOM)
+		#if (lime && openfl_html5)
+		else if (false && __stage.limeWindow.context.type == DOM)
 		{
 			// TODO
 
@@ -386,7 +391,7 @@ class Stage3D extends EventDispatcher
 			// __canvas.width = stage.stageWidth;
 			// __canvas.height = stage.stageHeight;
 
-			// var window = stage.window;
+			// var window = stage.limeWindow;
 			// var attributes = @:privateAccess window.__attributes;
 
 			// var transparentBackground = Reflect.hasField(attributes, "background") && attributes.background == null;
@@ -433,10 +438,10 @@ class Stage3D extends EventDispatcher
 			// }
 		}
 		#end
-		else
-		{
-			__dispatchError();
-		}
+	else
+	{
+		__dispatchError();
+	}
 	}
 
 	@:noCompletion private function __dispatchError():Void
@@ -469,7 +474,7 @@ class Stage3D extends EventDispatcher
 	{
 		if (width != __width || height != __height)
 		{
-			#if (js && html5)
+			#if openfl_html5
 			if (__canvas != null)
 			{
 				__canvas.width = width;

@@ -1,6 +1,11 @@
 package flash.display;
 
 #if flash
+import openfl.display3D.Context3D;
+import openfl.display.Application;
+import openfl.geom.Rectangle;
+import openfl.Lib;
+#if lime
 import lime.app.Application in LimeApplication;
 import lime.app.IModule;
 import lime.graphics.RenderContext;
@@ -13,21 +18,22 @@ import lime.ui.KeyCode;
 import lime.ui.KeyModifier;
 import lime.ui.Touch;
 import lime.ui.Window;
-import openfl.display3D.Context3D;
-import openfl.display.Application;
-import openfl.geom.Rectangle;
-import openfl.Lib;
+#end
 
-extern class Stage extends DisplayObjectContainer implements IModule
+extern class Stage extends DisplayObjectContainer #if lime implements IModule #end
 {
 	public var align:StageAlign;
 	@:require(flash10_2) public var allowsFullScreen(default, never):Bool;
 	@:require(flash11_3) public var allowsFullScreenInteractive(default, never):Bool;
+	#if lime
+	@:noCompletion @:dox(hide)
+	@:deprecated("Stage.application is deprecated. Use Stage.limeApplication instead.")
 	public var application(get, never):Application;
 	@:noCompletion private inline function get_application():Application
 	{
-		return Lib.application;
+		return this.limeApplication;
 	}
+	#end
 	#if air
 	public var autoOrients:Bool;
 	#end
@@ -60,6 +66,18 @@ extern class Stage extends DisplayObjectContainer implements IModule
 	public var fullScreenSourceRect:Rectangle;
 	#end
 	public var fullScreenWidth(default, never):UInt;
+	#if lime
+	public var limeApplication(get, never):Application;
+	@:noCompletion private inline function get_limeApplication():Application
+	{
+		return Lib.limeApplication;
+	}
+	public var limeWindow(get, never):Window;
+	@:noCompletion private inline function get_limeWindow():Window
+	{
+		return Lib.limeApplication.window;
+	}
+	#end
 	#if flash
 	@:require(flash11_2) public var mouseLock:Bool;
 	#end
@@ -83,11 +101,15 @@ extern class Stage extends DisplayObjectContainer implements IModule
 	#if air
 	public var supportedOrientations(default, never):Vector<StageOrientation>;
 	#end
+	#if lime
+	@:noCompletion @:dox(hide)
+	@:deprecated("Stage.window is deprecated. Use Stage.window instead.")
 	public var window(get, never):Window;
 	@:noCompletion private inline function get_window():Window
 	{
-		return Lib.application.window;
+		return this.limeWindow;
 	}
+	#end
 	#if flash
 	@:require(flash10_1) public var wmodeGPU(default, never):Bool;
 	#end
@@ -106,6 +128,7 @@ extern class Stage extends DisplayObjectContainer implements IModule
 	public function setOrientation(newOrientation:StageOrientation):Void;
 	public static var supportsOrientationChange(default, never):Bool;
 	#end
+	#if lime
 	private function __registerLimeModule(application:LimeApplication):Void;
 	private function __unregisterLimeModule(application:LimeApplication):Void;
 	public function onRenderContextLost():Void;
@@ -153,6 +176,14 @@ extern class Stage extends DisplayObjectContainer implements IModule
 	public function onWindowResize(width:Int, height:Int):Void;
 	public function onWindowRestore():Void;
 	public function update(deltaTime:Int):Void;
+	#end
+
+	#if (mute || mute_sound)
+	private static function __init__():Void
+	{
+		flash.media.SoundMixer.soundTransform = new flash.media.SoundTransform(0);
+	}
+	#end
 }
 #else
 typedef Stage = openfl.display.Stage;

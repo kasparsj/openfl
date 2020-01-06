@@ -1,7 +1,8 @@
 package openfl.display;
 
 #if !flash
-import openfl._internal.utils.Float32Array;
+import openfl._internal.bindings.gl.GL;
+import openfl._internal.bindings.typedarray.Float32Array;
 import openfl.display3D.Context3D;
 
 /**
@@ -183,7 +184,7 @@ import openfl.display3D.Context3D;
 
 	@:noCompletion private function __updateGL(context:Context3D, overrideValue:Array<T> = null):Void
 	{
-		#if lime
+		#if openfl_gl
 		var gl = context.gl;
 
 		var value = overrideValue != null ? overrideValue : this.value;
@@ -417,7 +418,7 @@ import openfl.display3D.Context3D;
 
 	@:noCompletion private function __updateGLFromBuffer(context:Context3D, buffer:Float32Array, position:Int, length:Int, bufferOffset:Int):Void
 	{
-		#if lime
+		#if openfl_gl
 		var gl = context.gl;
 
 		if (__isUniform)
@@ -558,9 +559,9 @@ import openfl.display3D.Context3D;
 			}
 			else
 			{
-				var type = gl.FLOAT;
-				if (__isBool) type = gl.INT; // gl.BOOL;
-				else if (__isInt) type = gl.INT;
+				var type = GL.FLOAT;
+				if (__isBool) type = GL.INT; // gl.BOOL;
+				else if (__isInt) type = GL.INT;
 
 				for (i in 0...__arrayLength)
 				{

@@ -8,8 +8,9 @@ import openfl.display.Shader;
 import openfl.geom.Point;
 import openfl.geom.Rectangle;
 #if lime
-import lime._internal.graphics.ImageDataUtil; // TODO
-
+import lime._internal.graphics.ImageDataUtil;
+#elseif openfl_html5
+import openfl._internal.backend.lime_standalone.ImageDataUtil;
 #end
 
 /**
@@ -177,13 +178,13 @@ import lime._internal.graphics.ImageDataUtil; // TODO
 	@:noCompletion private override function __applyFilter(bitmapData:BitmapData, sourceBitmapData:BitmapData, sourceRect:Rectangle,
 			destPoint:Point):BitmapData
 	{
-		#if lime
+		#if (lime || openfl_html5)
 		var time = Timer.stamp();
-		var finalImage = ImageDataUtil.gaussianBlur(bitmapData.image, sourceBitmapData.image, sourceRect.__toLimeRectangle(), destPoint.__toLimeVector2(),
-			__blurX, __blurY, __quality);
+		var finalImage = ImageDataUtil.gaussianBlur(bitmapData.limeImage, sourceBitmapData.limeImage, sourceRect.__toLimeRectangle(),
+			destPoint.__toLimeVector2(), __blurX, __blurY, __quality);
 		var elapsed = Timer.stamp() - time;
 		// trace("blurX: " + __blurX + " blurY: " + __blurY + " quality: " + __quality + " elapsed: " + elapsed * 1000 + "ms");
-		if (finalImage == bitmapData.image) return bitmapData;
+		if (finalImage == bitmapData.limeImage) return bitmapData;
 		#end
 		return sourceBitmapData;
 	}
@@ -313,14 +314,14 @@ private class BlurShader extends BitmapFilterShader
 	{
 		super();
 
-		#if !macro
+		#if (!macro && openfl_gl)
 		uRadius.value = [0, 0];
 		#end
 	}
 
 	@:noCompletion private override function __update():Void
 	{
-		#if !macro
+		#if (!macro && openfl_gl)
 		uTextureSize.value = [__texture.input.width, __texture.input.height];
 		#end
 

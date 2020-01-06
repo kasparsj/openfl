@@ -1,9 +1,9 @@
 package openfl._internal.text;
 
 import haxe.Timer;
-import openfl._internal.backend.gl.GLTexture;
+import openfl._internal.bindings.cairo.CairoFontFace;
+import openfl._internal.bindings.gl.GLTexture;
 import openfl._internal.utils.Log;
-import openfl.Vector;
 import openfl.geom.Rectangle;
 import openfl.text.AntiAliasType;
 import openfl.text.Font;
@@ -13,11 +13,11 @@ import openfl.text.TextFieldAutoSize;
 import openfl.text.TextFieldType;
 import openfl.text.TextFormat;
 import openfl.text.TextFormatAlign;
+import openfl.Vector;
 #if lime
-import lime.graphics.cairo.CairoFontFace;
 import lime.system.System;
 #end
-#if (js && html5)
+#if openfl_html5
 import js.html.CanvasElement;
 import js.html.CanvasRenderingContext2D;
 import js.Browser;
@@ -39,7 +39,7 @@ class TextEngine
 	private static inline var UTF8_HYPHEN:Int = 0x2D;
 	private static inline var GUTTER:Int = 2;
 	private static var __defaultFonts:Map<String, Font> = new Map();
-	#if (js && html5)
+	#if openfl_html5
 	private static var __context:CanvasRenderingContext2D;
 	#end
 
@@ -49,7 +49,7 @@ class TextEngine
 	public var backgroundColor:Int;
 	public var border:Bool;
 	public var borderColor:Int;
-	public var bottomScrollV(get, null):Int;
+	public var bottomScrollV(default, null):Int;
 	public var bounds:Rectangle;
 	public var caretIndex:Int;
 	public var embedFonts:Bool;
@@ -64,15 +64,15 @@ class TextEngine
 	public var lineWidths:Vector<Float>;
 	public var maxChars:Int;
 	public var maxScrollH(default, null):Int;
-	public var maxScrollV(get, null):Int;
+	public var maxScrollV(default, null):Int;
 	public var multiline:Bool;
 	public var numLines(default, null):Int;
-	public var restrict(default, set):UTF8String;
+	public var restrict(default, set):String;
 	public var scrollH:Int;
 	@:isVar public var scrollV(get, set):Int;
 	public var selectable:Bool;
 	public var sharpness:Float;
-	public var text(default, set):UTF8String;
+	public var text(default, set):String;
 	public var textBounds:Rectangle;
 	public var textHeight:Float;
 	public var textFormatRanges:Vector<TextFormatRange>;
@@ -91,7 +91,9 @@ class TextEngine
 	@:noCompletion private var __selectionStart:Int;
 	@:noCompletion private var __showCursor:Bool;
 	@:noCompletion private var __textFormat:TextFormat;
+	#if (lime && !openfl_html5)
 	@:noCompletion private var __textLayout:TextLayout;
+	#end
 	@:noCompletion private var __texture:GLTexture;
 	// @:noCompletion private var __tileData:Map<Tilesheet, Array<Float>>;
 	// @:noCompletion private var __tileDataLength:Map<Tilesheet, Int>;
@@ -138,7 +140,7 @@ class TextEngine
 		layoutGroups = new Vector();
 		textFormatRanges = new Vector();
 
-		#if (js && html5)
+		#if openfl_html5
 		if (__context == null)
 		{
 			__context = (cast Browser.document.createElement("canvas") : CanvasElement).getContext("2d");
@@ -174,7 +176,7 @@ class TextEngine
 
 	private static function findFont(name:String):Font
 	{
-		#if (js && html5)
+		#if openfl_html5
 		return Font.__fontByName.get(name);
 		#elseif lime_cffi
 		for (registeredFont in Font.__registeredFonts)
@@ -251,7 +253,7 @@ class TextEngine
 		if (x >= width) x = GUTTER;
 		if (y >= height) y = GUTTER;
 
-		#if (js && html5)
+		#if openfl_html5
 		var textHeight = textHeight * 1.185; // measurement isn't always accurate, add padding
 		#end
 
@@ -263,7 +265,7 @@ class TextEngine
 	{
 		var ascent:Float, descent:Float, leading:Int;
 
-		#if (js && html5)
+		#if openfl_html5
 		__context.font = getFont(format);
 		#end
 
@@ -274,14 +276,14 @@ class TextEngine
 			ascent = format.size * format.__ascent;
 			descent = format.size * format.__descent;
 		}
-		else if (#if lime font != null && font.unitsPerEM != 0 #else false #end)
+		else if (#if (lime || openfl_html5) font != null && font.unitsPerEM != 0 #else false #end)
 		{
-			#if lime
+			#if (lime || openfl_html5)
 			ascent = (font.ascender / font.unitsPerEM) * format.size;
 			descent = Math.abs((font.descender / font.unitsPerEM) * format.size);
 			#else
-			ascent = format.size;
-			descent = format.size * 0.185;
+			ascent = 0;
+			descent = 0;
 			#end
 		}
 		else
@@ -354,7 +356,7 @@ class TextEngine
 
 	public static function getFontInstance(format:TextFormat):Font
 	{
-		#if (js && html5)
+		#if openfl_html5
 		return findFontVariant(format);
 		#elseif lime_cffi
 		var instance = null;
@@ -626,7 +628,7 @@ class TextEngine
 			}
 
 			currentLineHeight = Math.max(currentLineHeight, group.height);
-			currentLineWidth = group.offsetX - GUTTER + group.width;
+			currentLineWidth = Math.max(currentLineWidth, group.offsetX - GUTTER + group.width);
 
 			// TODO: confirm whether textWidth ignores margins, indents, etc or not
 			// currently they are not ignored, and setTextAlignment() happens to work due to this (gut feeling is that it does ignore them)
@@ -655,14 +657,14 @@ class TextEngine
 				ascent = currentFormat.size * currentFormat.__ascent;
 				descent = currentFormat.size * currentFormat.__descent;
 			}
-			else if (#if lime font != null && font.unitsPerEM != 0 #else false #end)
+			else if (#if (lime || openfl_html) font != null && font.unitsPerEM != 0 #else false #end)
 			{
-				#if lime
+				#if (lime || openfl_html5)
 				ascent = (font.ascender / font.unitsPerEM) * currentFormat.size;
 				descent = Math.abs((font.descender / font.unitsPerEM) * currentFormat.size);
 				#else
-				ascent = currentFormat.size;
-				descent = currentFormat.size * 0.185;
+				ascent = 0;
+				descent = 0;
 				#end
 			}
 			else
@@ -679,6 +681,7 @@ class TextEngine
 			currentLineDescent = descent;
 			currentLineLeading = leading;
 
+			// TODO: integer line heights/text heights
 			currentTextHeight = ascent + descent;
 			textHeight = currentTextHeight;
 		}
@@ -718,7 +721,7 @@ class TextEngine
 					}
 
 					height = textHeight + GUTTER * 2;
-					bottomScrollV = numLines;
+				// bottomScrollV = numLines;
 
 				default:
 			}
@@ -735,6 +738,8 @@ class TextEngine
 		}
 
 		if (scrollH > maxScrollH) scrollH = maxScrollH;
+
+		updateScrollV();
 	}
 
 	private function getLayoutGroups():Void
@@ -780,7 +785,7 @@ class TextEngine
 		#if !js
 		inline
 		#end
-		function getPositions(text:UTF8String, startIndex:Int, endIndex:Int):Array<#if (js && html5) Float #else GlyphPosition #end>
+		function getPositions(text:String, startIndex:Int, endIndex:Int):Array<#if (openfl_html5 || !lime) Float #else GlyphPosition #end>
 		{
 			// TODO: optimize
 
@@ -792,7 +797,7 @@ class TextEngine
 				letterSpacing = formatRange.format.letterSpacing;
 			}
 
-			#if (js && html5)
+			#if openfl_html5
 			if (__useIntAdvances == null)
 			{
 				__useIntAdvances = ~/Trident\/7.0/.match(Browser.navigator.userAgent); // IE
@@ -840,7 +845,7 @@ class TextEngine
 			}
 
 			return positions;
-			#else
+			#elseif lime
 			if (__textLayout == null)
 			{
 				__textLayout = new TextLayout();
@@ -864,17 +869,19 @@ class TextEngine
 
 			__textLayout.text = text.substring(startIndex, endIndex);
 			return __textLayout.positions;
+			#else
+			return [];
 			#end
 		}
 
-		#if !js inline #end function getPositionsWidth(positions:#if (js && html5) Array<Float> #else Array<GlyphPosition> #end):Float
+		#if !js inline #end function getPositionsWidth(positions:#if (openfl_html5 || !lime) Array<Float> #else Array<GlyphPosition> #end):Float
 
 		{
 			var width = 0.0;
 
 			for (position in positions)
 			{
-				#if (js && html5)
+				#if (openfl_html5 || !lime)
 				width += position;
 				#else
 				width += position.advance.x;
@@ -887,9 +894,9 @@ class TextEngine
 		#if !js inline #end function getTextWidth(text:String):Float
 
 		{
-			#if (js && html5)
+			#if openfl_html5
 			return __context.measureText(text).width;
-			#else
+			#elseif lime
 			if (__textLayout == null)
 			{
 				__textLayout = new TextLayout();
@@ -916,6 +923,8 @@ class TextEngine
 			}
 
 			return width;
+			#else
+			return 0;
 			#end
 		}
 
@@ -957,9 +966,9 @@ class TextEngine
 				ascent = currentFormat.size * currentFormat.__ascent;
 				descent = currentFormat.size * currentFormat.__descent;
 			}
-			else if (#if lime font != null && font.unitsPerEM != 0 #else false #end)
+			else if (#if (lime || openfl_html5) font != null && font.unitsPerEM != 0 #else false #end)
 			{
-				#if lime
+				#if (lime || openfl_html5)
 				ascent = (font.ascender / font.unitsPerEM) * currentFormat.size;
 				descent = Math.abs((font.descender / font.unitsPerEM) * currentFormat.size);
 				#end
@@ -1017,7 +1026,7 @@ class TextEngine
 				formatRange = textFormatRanges[rangeIndex];
 				currentFormat.__merge(formatRange.format);
 
-				#if (js && html5)
+				#if openfl_html5
 				__context.font = getFont(currentFormat);
 				#end
 
@@ -1214,7 +1223,7 @@ class TextEngine
 				{
 					currentPosition = remainingPositions[i];
 
-					if (#if (js && html5) currentPosition #else currentPosition.advance.x #end == 0.0)
+					if (#if (openfl_html5 || !lime) currentPosition #else currentPosition.advance.x #end == 0.0)
 					{
 						// skip Unicode character buffer positions
 						i++;
@@ -1222,7 +1231,7 @@ class TextEngine
 					}
 					else
 					{
-						positionWidth += #if (js && html5) currentPosition #else currentPosition.advance.x #end;
+						positionWidth += #if (openfl_html5 || !lime) currentPosition #else currentPosition.advance.x #end;
 						i++;
 					}
 				}
@@ -1289,9 +1298,8 @@ class TextEngine
 		setLineMetrics();
 
 		var wrap;
-		var maxLoops = text.length +
-			1; // Do an extra iteration to ensure a LayoutGroup is created in case the last line is empty (multiline or trailing line break).
-		// TODO: check if the +1 is still needed, since the extra layout group is handled separately
+		var maxLoops = text.length + 1;
+		// Do an extra iteration to ensure a LayoutGroup is created in case the last line is empty (trailing line break).
 
 		while (textIndex < maxLoops)
 		{
@@ -1378,7 +1386,7 @@ class TextEngine
 							// Trim left space of this word
 							textIndex++;
 
-							var spaceWidth = #if (js && html5) positions.shift() #else positions.shift().advance.x #end;
+							var spaceWidth = #if (openfl_html5 || !lime) positions.shift() #else positions.shift().advance.x #end;
 							widthValue -= spaceWidth;
 							offsetX += spaceWidth;
 						}
@@ -1388,7 +1396,7 @@ class TextEngine
 							// Trim right space of this word
 							endIndex--;
 
-							var spaceWidth = #if (js && html5) positions.pop() #else positions.pop().advance.x #end;
+							var spaceWidth = #if (openfl_html5 || !lime) positions.pop() #else positions.pop().advance.x #end;
 							widthValue -= spaceWidth;
 						}
 					}
@@ -1405,7 +1413,7 @@ class TextEngine
 								// TODO: Handle multiple spaces
 
 								var lastPosition = positions[positions.length - 1];
-								var spaceWidth = #if (js && html5) lastPosition #else lastPosition.advance.x #end;
+								var spaceWidth = #if (openfl_html5 || !lime) lastPosition #else lastPosition.advance.x #end;
 
 								if (offsetX + widthValue - spaceWidth <= getWrapWidth())
 								{
@@ -1546,7 +1554,7 @@ class TextEngine
 						if (breakIndex - layoutGroup.startIndex - layoutGroup.positions.length < 0)
 						{
 							// Newline has no size
-							layoutGroup.positions.push(#if (js && html5) 0.0 #else null #end);
+							layoutGroup.positions.push(#if openfl_html5 0.0 #else null #end);
 						}
 
 						textIndex = breakIndex + 1;
@@ -1587,7 +1595,7 @@ class TextEngine
 			layoutGroup.ascent = ascent;
 			layoutGroup.descent = descent;
 			layoutGroup.leading = leading;
-			layoutGroup.lineIndex = lineIndex;
+			layoutGroup.lineIndex = lineIndex - 1;
 			layoutGroup.offsetX = getBaseX(); // TODO: double check it doesn't default to GUTTER or something
 			layoutGroup.offsetY = offsetY + GUTTER;
 			layoutGroup.width = 0;
@@ -1602,7 +1610,7 @@ class TextEngine
 		#end
 	}
 
-	public function restrictText(value:UTF8String):UTF8String
+	public function restrictText(value:String):String
 	{
 		if (value == null)
 		{
@@ -1638,6 +1646,7 @@ class TextEngine
 			if (group.lineIndex != lineIndex)
 			{
 				lineIndex = group.lineIndex;
+				totalWidth = this.width - GUTTER * 2 - group.format.rightMargin;
 
 				switch (group.format.align)
 				{
@@ -1729,7 +1738,7 @@ class TextEngine
 		}
 	}
 
-	public function trimText(value:UTF8String):UTF8String
+	public function trimText(value:String):String
 	{
 		if (value == null)
 		{
@@ -1760,8 +1769,9 @@ class TextEngine
 			textHeight = 0;
 			numLines = 1;
 			maxScrollH = 0;
-			maxScrollV = 1;
-			bottomScrollV = 1;
+			// maxScrollV = 1;
+			// bottomScrollV = 1;
+			updateScrollV();
 		}
 		else
 		{
@@ -1773,72 +1783,78 @@ class TextEngine
 		getBounds();
 	}
 
-	// Get & Set Methods
-	private function get_bottomScrollV():Int
+	private function updateScrollV():Void
 	{
-		// TODO: only update when dirty
 		if (numLines == 1 || lineHeights == null)
 		{
-			return 1;
-		}
-		else
-		{
-			var tempHeight = 0.0;
-			var ret = lineHeights.length;
-
-			for (i in ret - 1...lineHeights.length)
-			{
-				if (tempHeight + lineHeights[i] <= height - GUTTER * 2)
-				{
-					tempHeight += lineHeights[i];
-				}
-				else
-				{
-					ret = i;
-					break;
-				}
-			}
-
-			if (ret < 1) return 1;
-			return ret;
-		}
-	}
-
-	private function get_maxScrollV():Int
-	{
-		// TODO: only update when dirty
-		if (numLines == 1 || lineHeights == null)
-		{
-			return 1;
+			maxScrollV = 1;
 		}
 		else
 		{
 			var i = numLines - 1, tempHeight = 0.0;
-
-			if (text.charCodeAt(text.length - 1) == '\n'.code) i--; // trailing newlines do not contribute to maxScrollV
 			var j = i;
 
 			while (i >= 0)
 			{
-				if (tempHeight + lineHeights[i] <= height - GUTTER * 2)
+				if (tempHeight + lineHeights[i] <= Math.ceil(height - GUTTER * 2))
 				{
 					tempHeight += lineHeights[i];
 					i--;
 				}
 				else
+				{
 					break;
+				}
 			}
 
-			if (i == j) i = numLines; // maxScrollV defaults to numLines if the height - 4 is less than the line's height
-			// TODO: check if it's based on the first or last line's height
+			if (i == j)
+			{
+				i = numLines; // maxScrollV defaults to numLines if the height - 4 is less than the line's height
+				// TODO: check if it's based on the first or last line's height
+			}
 			else
+			{
 				i += 2;
+			}
 
-			if (i < 1) return 1;
-			return i;
+			if (i < 1)
+			{
+				maxScrollV = 1;
+			}
+			else
+			{
+				maxScrollV = i;
+			}
+		}
+
+		if (numLines == 1 || lineHeights == null)
+		{
+			bottomScrollV = 1;
+		}
+		else
+		{
+			var tempHeight = 0.0;
+			var ret = scrollV;
+
+			while (ret <= lineHeights.length)
+			{
+				if (tempHeight + lineHeights[ret - 1] <= Math.ceil(height - GUTTER))
+				{
+					tempHeight += lineHeights[ret - 1];
+				}
+				else
+				{
+					break;
+				}
+
+				ret++;
+			}
+
+			bottomScrollV = ret - 1;
 		}
 	}
 
+	// Get & Set Methods
 	private function set_restrict(value:String):String
 	{
 		if (restrict == value)
@@ -1872,7 +1888,10 @@ class TextEngine
 	private function set_scrollV(value:Int):Int
 	{
 		if (value < 1) value = 1;
-		return scrollV = value;
+		scrollV = value;
+		// TODO: Cheaper way to update bottomScrollV?
+		updateScrollV();
+		return value;
 	}
 
 	private function set_text(value:String):String

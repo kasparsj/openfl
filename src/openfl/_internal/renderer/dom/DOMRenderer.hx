@@ -1,27 +1,28 @@
 package openfl._internal.renderer.dom;
 
+#if openfl_html5
 import js.html.Element;
-import lime._internal.graphics.ImageCanvasUtil;
-import lime.graphics.DOMRenderContext;
 import openfl._internal.renderer.canvas.CanvasRenderer;
 import openfl.display.Bitmap;
-import openfl.display.BitmapData;
 import openfl.display.BlendMode;
 import openfl.display.DOMElement;
 import openfl.display.DOMRenderer as DOMRendererAPI;
 import openfl.display.DisplayObject;
 import openfl.display.DisplayObjectContainer;
 import openfl.display.IBitmapDrawable;
-import openfl.display.Shape;
 import openfl.display.SimpleButton;
 import openfl.display.Tilemap;
 import openfl.events.RenderEvent;
 import openfl.geom.ColorTransform;
 import openfl.geom.Matrix;
-import openfl.geom.Point;
 import openfl.geom.Rectangle;
 import openfl.media.Video;
 import openfl.text.TextField;
+#if !lime
+import openfl._internal.backend.lime_standalone.DOMRenderContext;
+#else
+import lime.graphics.DOMRenderContext;
+#end
 
 /**
 	**BETA**
@@ -122,7 +123,7 @@ class DOMRenderer extends DOMRendererAPI
 
 	private function __applyStyle(displayObject:DisplayObject, setTransform:Bool, setAlpha:Bool, setClip:Bool):Void
 	{
-		#if (js && html5)
+		#if openfl_html5
 		var style = displayObject.__style;
 
 		// TODO: displayMatrix
@@ -179,7 +180,7 @@ class DOMRenderer extends DOMRendererAPI
 			{
 				case BITMAP:
 					__clearBitmap(cast object);
-				case DISPLAY_OBJECT_CONTAINER:
+				case DISPLAY_OBJECT_CONTAINER, MOVIE_CLIP:
 					__clearDisplayObjectContainer(cast object);
 				case DOM_ELEMENT:
 					__clearDOMElement(cast object);
@@ -193,6 +194,7 @@ class DOMRenderer extends DOMRendererAPI
 					__clearTilemap(cast object);
 				case VIDEO:
 					__clearVideo(cast object);
+				default:
 			}
 		}
 	}
@@ -211,9 +213,11 @@ class DOMRenderer extends DOMRendererAPI
 
 		__clearShape(cast container);
 
-		for (child in container.__children)
+		var child = container.__firstChild;
+		while (child != null)
 		{
 			__clearDisplayObject(child);
+			child = child.__nextSibling;
 		}
 	}
 
@@ -277,7 +281,7 @@ class DOMRenderer extends DOMRendererAPI
 		}
 	}
 
-	#if (js && html5)
+	#if openfl_html5
 	private function __initializeElement(displayObject:DisplayObject, element:Element):Void
 	{
 		var style = displayObject.__style = element.style;
@@ -431,7 +435,7 @@ class DOMRenderer extends DOMRendererAPI
 			{
 				case BITMAP:
 					__renderBitmap(cast object);
-				case DISPLAY_OBJECT_CONTAINER:
+				case DISPLAY_OBJECT_CONTAINER, MOVIE_CLIP:
 					__renderDisplayObjectContainer(cast object);
 				case DOM_ELEMENT:
 					__renderDOMElement(cast object);
@@ -445,6 +449,8 @@ class DOMRenderer extends DOMRendererAPI
 					__renderTilemap(cast object);
 				case VIDEO:
 					__renderVideo(cast object);
+				default:
+					return;
 			}
 
 			if (object.__customRenderEvent != null)
@@ -503,21 +509,24 @@ class DOMRenderer extends DOMRendererAPI
 
 			__pushMaskObject(container);
 
+			var child = container.__firstChild;
 			if (__stage != null)
 			{
-				for (child in container.__children)
+				while (child != null)
 				{
 					__renderDisplayObject(child);
 					child.__renderDirty = false;
+					child = child.__nextSibling;
 				}
 
 				container.__renderDirty = false;
 			}
 			else
 			{
-				for (child in container.__children)
+				while (child != null)
 				{
 					__renderDisplayObject(child);
+					child = child.__nextSibling;
 				}
 			}
 
@@ -582,7 +591,7 @@ class DOMRenderer extends DOMRendererAPI
 		{
 			if (button.__currentState.stage != button.stage)
 			{
-				button.__currentState.__setStageReference(button.stage);
+				button.__currentState.__setStageReferences(button.stage);
 			}
 
 			__renderDisplayObject(button.__currentState);
@@ -593,7 +602,7 @@ class DOMRenderer extends DOMRendererAPI
 
 	private function __renderTextField(textField:TextField):Void
 	{
-		#if (js && html5)
+		#if openfl_html5
 		textField.__domRender = true;
 		__canvasRenderer.__updateCacheBitmap(textField, textField.__forceCachedBitmapUpdate
 			|| /*!__worldColorTransform.__isDefault ()*/ false);
@@ -776,3 +785,4 @@ class DOMRenderer extends DOMRendererAPI
 		}
 	}
 }
+#end

@@ -2,7 +2,8 @@ package openfl.display3D.textures;
 
 #if !flash
 import haxe.Timer;
-import openfl._internal.backend.gl.GLTexture;
+import openfl._internal.bindings.gl.GLTexture;
+import openfl._internal.bindings.gl.GL;
 import openfl.events.Event;
 import openfl.net.NetStream;
 
@@ -60,7 +61,9 @@ import openfl.net.NetStream;
 	{
 		super(context);
 
-		__textureTarget = __context.gl.TEXTURE_2D;
+		#if openfl_gl
+		__textureTarget = GL.TEXTURE_2D;
+		#end
 	}
 
 	#if false
@@ -89,17 +92,17 @@ import openfl.net.NetStream;
 	**/
 	public function attachNetStream(netStream:NetStream):Void
 	{
-		#if (js && html5)
+		#if openfl_html5
 		if (__netStream != null)
 		{
-			__netStream.__video.removeEventListener("canplay", __onCanPlay, false);
+			@:privateAccess __netStream.__backend.video.removeEventListener("canplay", __onCanPlay, false);
 		}
 		#end
 
 		__netStream = netStream;
 
-		#if (js && html5)
-		if (__netStream.__video.readyState == 4)
+		#if openfl_html5
+		if (@:privateAccess __netStream.__backend.video.readyState == 4)
 		{
 			Timer.delay(function()
 			{
@@ -108,39 +111,42 @@ import openfl.net.NetStream;
 		}
 		else
 		{
-			__netStream.__video.addEventListener("canplay", __onCanPlay, false);
+			@:privateAccess __netStream.__backend.video.addEventListener("canplay", __onCanPlay, false);
 		}
 		#end
 	}
 
-	#if (js && html5)
+	#if openfl_html5
 	@:noCompletion private function __onCanPlay(_):Void
 	{
 		__textureReady();
 	}
 	#end
 
+	#if openfl_gl
 	@:noCompletion private override function __getTexture():GLTexture
 	{
-		#if (js && html5)
-		if ((!__netStream.__video.paused || __netStream.__seeking) && __netStream.__video.readyState > 0)
+		#if openfl_html5
+		if ((!@:privateAccess __netStream.__backend.video.paused || @:privateAccess __netStream.__backend.seeking)
+			&& @:privateAccess __netStream.__backend.video.readyState > 0)
 		{
-			__netStream.__seeking = false;
+			@:privateAccess __netStream.__backend.seeking = false;
 			var gl = __context.gl;
 
 			__context.__bindGLTexture2D(__textureID);
-			gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, __netStream.__video);
+			gl.texImage2D(GL.TEXTURE_2D, 0, GL.RGBA, GL.RGBA, GL.UNSIGNED_BYTE, @:privateAccess __netStream.__backend.video);
 		}
 		#end
 
 		return __textureID;
 	}
+	#end
 
 	@:noCompletion private function __textureReady():Void
 	{
-		#if (js && html5)
-		videoWidth = __netStream.__video.videoWidth;
-		videoHeight = __netStream.__video.videoHeight;
+		#if openfl_html5
+		videoWidth = @:privateAccess __netStream.__backend.video.videoWidth;
+		videoHeight = @:privateAccess __netStream.__backend.video.videoHeight;
 		#end
 
 		var event:Event = null;

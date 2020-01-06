@@ -5,26 +5,22 @@ import openfl._internal.renderer.context3D.Context3DBuffer;
 import openfl._internal.renderer.DrawCommandBuffer;
 import openfl._internal.renderer.DrawCommandReader;
 import openfl._internal.renderer.ShaderBuffer;
-import openfl._internal.utils.Float32Array;
+import openfl._internal.bindings.typedarray.Float32Array;
 import openfl._internal.utils.ObjectPool;
-import openfl._internal.utils.UInt16Array;
+import openfl._internal.bindings.typedarray.UInt16Array;
 import openfl.display3D.IndexBuffer3D;
 import openfl.display3D.VertexBuffer3D;
 import openfl.errors.ArgumentError;
 import openfl.geom.Matrix;
 import openfl.geom.Rectangle;
 import openfl.Vector;
-#if lime
-import lime.graphics.cairo.Cairo;
-#if (js && html5)
-import openfl._internal.renderer.canvas.CanvasGraphics;
-#elseif lime_cffi
-import openfl._internal.renderer.cairo.CairoGraphics;
-#end
-#end
-#if (js && html5)
+#if openfl_html5
 import js.html.CanvasElement;
 import js.html.CanvasRenderingContext2D;
+import openfl._internal.renderer.canvas.CanvasGraphics;
+#else
+import openfl._internal.bindings.cairo.Cairo;
+import openfl._internal.renderer.cairo.CairoGraphics;
 #end
 
 /**
@@ -65,7 +61,9 @@ import js.html.CanvasRenderingContext2D;
 	@:noCompletion private var __managed:Bool;
 	@:noCompletion private var __positionX:Float;
 	@:noCompletion private var __positionY:Float;
+	#if openfl_gl
 	@:noCompletion private var __quadBuffer:Context3DBuffer;
+	#end
 	@:noCompletion private var __renderTransform:Matrix;
 	@:noCompletion private var __shaderBufferPool:ObjectPool<ShaderBuffer>;
 	@:noCompletion private var __softwareDirty:Bool;
@@ -86,13 +84,18 @@ import js.html.CanvasRenderingContext2D;
 	@:noCompletion private var __owner:DisplayObject;
 	@:noCompletion private var __width:Int;
 	@:noCompletion private var __worldTransform:Matrix;
-	#if (js && html5)
+	#if openfl_html5
 	@:noCompletion private var __canvas:CanvasElement;
-	@:noCompletion private var __context:#if lime CanvasRenderingContext2D #else Dynamic #end;
+	@:noCompletion private var __context:CanvasRenderingContext2D;
 	#else
 	@SuppressWarnings("checkstyle:Dynamic") @:noCompletion private var __cairo:#if lime Cairo #else Dynamic #end;
 	#end
 	@:noCompletion private var __bitmap:BitmapData;
+
+	#if draft
+	@:noCompletion private var __drawPaths:Array<openfl._internal.renderer.opengl.utils.DrawPath>;
+	@:noCompletion private var __glStack:Array<openfl._internal.renderer.opengl.utils.GLStack> = [];
+	#end
 
 	@:noCompletion private function new(owner:DisplayObject)
 	{
@@ -110,7 +113,7 @@ import js.html.CanvasRenderingContext2D;
 
 		__shaderBufferPool = new ObjectPool<ShaderBuffer>(function() return new ShaderBuffer());
 
-		#if (js && html5)
+		#if openfl_html5
 		moveTo(0, 0);
 		#end
 	}
@@ -380,13 +383,11 @@ import js.html.CanvasRenderingContext2D;
 	{
 		if (shader != null)
 		{
-			#if lime
 			var shaderBuffer = __shaderBufferPool.get();
 			__usedShaderBuffers.add(shaderBuffer);
 			shaderBuffer.update(cast shader);
 
 			__commands.beginShaderFill(shaderBuffer);
-			#end
 		}
 	}
 
@@ -397,12 +398,10 @@ import js.html.CanvasRenderingContext2D;
 	**/
 	public function clear():Void
 	{
-		#if lime
 		for (shaderBuffer in __usedShaderBuffers)
 		{
 			__shaderBufferPool.release(shaderBuffer);
 		}
-		#end
 
 		__usedShaderBuffers.clear();
 		__commands.clear();
@@ -413,13 +412,14 @@ import js.html.CanvasRenderingContext2D;
 			__dirty = true;
 			__transformDirty = true;
 			__bounds = null;
+			__owner.__localBoundsDirty = true;
 		}
 
 		__visible = false;
 		__positionX = 0;
 		__positionY = 0;
 
-		#if (js && html5)
+		#if openfl_html5
 		moveTo(0, 0);
 		#end
 	}
@@ -434,6 +434,7 @@ import js.html.CanvasRenderingContext2D;
 	public function copyFrom(sourceGraphics:Graphics):Void
 	{
 		__bounds = sourceGraphics.__bounds != null ? sourceGraphics.__bounds.clone() : null;
+		__owner.__localBoundsDirty = true;
 		__commands = sourceGraphics.__commands.copy();
 		__dirty = true;
 		__strokePadding = sourceGraphics.__strokePadding;
@@ -1642,7 +1643,7 @@ import js.html.CanvasRenderingContext2D;
 
 	@:noCompletion private function __cleanup():Void
 	{
-		#if (js && html5)
+		#if openfl_html5
 		if (__bounds != null && __canvas != null)
 		{
 			__dirty = true;
@@ -1658,7 +1659,7 @@ import js.html.CanvasRenderingContext2D;
 
 		__bitmap = null;
 
-		#if (js && html5)
+		#if openfl_html5
 		__canvas = null;
 		__context = null;
 		#else
@@ -1687,9 +1688,9 @@ import js.html.CanvasRenderingContext2D;
 		{
 			if (shapeFlag)
 			{
-				#if (js && html5)
+				#if openfl_html5
 				return CanvasGraphics.hitTest(this, px, py);
-				#elseif (lime_cffi)
+				#elseif openfl_cairo
 				return CairoGraphics.hitTest(this, px, py);
 				#end
 			}
@@ -1705,32 +1706,38 @@ import js.html.CanvasRenderingContext2D;
 		if (__bounds == null)
 		{
 			__bounds = new Rectangle(x, y, 0, 0);
-			__transformDirty = true;
-			return;
-		}
-
-		if (x < __bounds.x)
-		{
-			__bounds.width += __bounds.x - x;
-			__bounds.x = x;
+			__owner.__localBoundsDirty = true;
 			__transformDirty = true;
 		}
-
-		if (y < __bounds.y)
+		else
 		{
-			__bounds.height += __bounds.y - y;
-			__bounds.y = y;
-			__transformDirty = true;
-		}
+			if (x < __bounds.x)
+			{
+				__bounds.width += __bounds.x - x;
+				__bounds.x = x;
+				__owner.__localBoundsDirty = true;
+				__transformDirty = true;
+			}
 
-		if (x > __bounds.x + __bounds.width)
-		{
-			__bounds.width = x - __bounds.x;
-		}
+			if (y < __bounds.y)
+			{
+				__bounds.height += __bounds.y - y;
+				__bounds.y = y;
+				__owner.__localBoundsDirty = true;
+				__transformDirty = true;
+			}
 
-		if (y > __bounds.y + __bounds.height)
-		{
-			__bounds.height = y - __bounds.y;
+			if (x > __bounds.x + __bounds.width)
+			{
+				__owner.__localBoundsDirty = true;
+				__bounds.width = x - __bounds.x;
+			}
+
+			if (y > __bounds.y + __bounds.height)
+			{
+				__owner.__localBoundsDirty = true;
+				__bounds.height = y - __bounds.y;
+			}
 		}
 	}
 

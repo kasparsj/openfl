@@ -1,7 +1,6 @@
 package openfl._internal.renderer.canvas;
 
-import lime._internal.graphics.ImageCanvasUtil;
-import lime.graphics.Canvas2DRenderContext;
+#if openfl_html5
 import openfl._internal.formats.html.HTMLParser;
 import openfl.display.Bitmap;
 import openfl.display.BitmapData;
@@ -11,7 +10,6 @@ import openfl.display.DisplayObject;
 import openfl.display.DisplayObjectContainer;
 import openfl.display.DOMRenderer;
 import openfl.display.IBitmapDrawable;
-import openfl.display.Shape;
 import openfl.display.SimpleButton;
 import openfl.display.Tilemap;
 import openfl.events.RenderEvent;
@@ -22,12 +20,18 @@ import openfl.text.TextFieldType;
 import openfl.geom.ColorTransform;
 import openfl.geom.Matrix;
 import openfl.geom.Rectangle;
+#if lime
+import lime.graphics.Canvas2DRenderContext;
+#else
+import openfl._internal.backend.lime_standalone.Canvas2DRenderContext;
+#end
 
 #if !openfl_debug
 @:fileXml('tags="haxe,release"')
 @:noDebug
 #end
 @:access(lime.graphics.ImageBuffer)
+@:access(openfl._internal.backend.lime_standalone.ImageBuffer)
 @:access(openfl.display.BitmapData)
 @:access(openfl.display.DisplayObject)
 @:access(openfl.display.DOMRenderer)
@@ -54,6 +58,7 @@ class CanvasRenderer extends CanvasRendererAPI
 
 		__colorTransform = new ColorTransform();
 		__transform = new Matrix();
+
 		__type = CANVAS;
 	}
 
@@ -99,11 +104,11 @@ class CanvasRenderer extends CanvasRendererAPI
 			if (!__stage.__transparent && __stage.__clearBeforeRender)
 			{
 				context.fillStyle = __stage.__colorString;
-				context.fillRect(0, 0, __stage.stageWidth * __stage.window.scale, __stage.stageHeight * __stage.window.scale);
+				context.fillRect(0, 0, __stage.stageWidth * __stage.__contentsScaleFactor, __stage.stageHeight * __stage.__contentsScaleFactor);
 			}
 			else if (__stage.__transparent && __stage.__clearBeforeRender)
 			{
-				context.clearRect(0, 0, __stage.stageWidth * __stage.window.scale, __stage.stageHeight * __stage.window.scale);
+				context.clearRect(0, 0, __stage.stageWidth * __stage.__contentsScaleFactor, __stage.stageHeight * __stage.__contentsScaleFactor);
 			}
 
 			__setBlendMode(cacheBlendMode);
@@ -112,29 +117,34 @@ class CanvasRenderer extends CanvasRendererAPI
 
 	private override function __drawBitmapData(bitmapData:BitmapData, source:IBitmapDrawable, clipRect:Rectangle):Void
 	{
+		var clipMatrix = null;
+
 		if (clipRect != null)
 		{
-			__pushMaskRect(clipRect, source.__renderTransform);
+			clipMatrix = Matrix.__pool.get();
+			clipMatrix.copyFrom(__worldTransform);
+			clipMatrix.invert();
+			__pushMaskRect(clipRect, clipMatrix);
 		}
 
-		var buffer = bitmapData.image.buffer;
+		var context = bitmapData.__getCanvasContext(true);
 
-		if (!__allowSmoothing) applySmoothing(buffer.__srcContext, false);
+		if (!__allowSmoothing) applySmoothing(context, false);
 
 		__render(source);
 
-		if (!__allowSmoothing) applySmoothing(buffer.__srcContext, true);
+		if (!__allowSmoothing) applySmoothing(context, true);
 
-		buffer.__srcContext.setTransform(1, 0, 0, 1, 0, 0);
-		buffer.__srcImageData = null;
-		buffer.data = null;
+		context.setTransform(1, 0, 0, 1, 0, 0);
+		// buffer.__srcImageData = null;
+		// buffer.data = null;
 
-		bitmapData.image.dirty = true;
-		bitmapData.image.version++;
+		bitmapData.__setDirty();
 
 		if (clipRect != null)
 		{
 			__popMaskRect();
+			Matrix.__pool.release(clipMatrix);
 		}
 	}
 
@@ -236,9 +246,9 @@ class CanvasRenderer extends CanvasRendererAPI
 	{
 		__updateCacheBitmap(bitmap, /*!__worldColorTransform.__isDefault ()*/ false);
 
-		if (bitmap.__bitmapData != null && bitmap.__bitmapData.image != null)
+		if (bitmap.__bitmapData != null && bitmap.__bitmapData.__getCanvas() != null)
 		{
-			bitmap.__imageVersion = bitmap.__bitmapData.image.version;
+			bitmap.__imageVersion = bitmap.__bitmapData.__getVersion();
 		}
 
 		if (bitmap.__cacheBitmap != null && !bitmap.__isCacheBitmapRender)
@@ -256,16 +266,11 @@ class CanvasRenderer extends CanvasRendererAPI
 	{
 		if (!bitmapData.readable) return;
 
-		if (bitmapData.image.type == DATA)
-		{
-			ImageCanvasUtil.convertToCanvas(bitmapData.image);
-		}
-
 		context.globalAlpha = 1;
 
 		setTransform(bitmapData.__renderTransform, context);
 
-		context.drawImage(bitmapData.image.src, 0, 0, bitmapData.image.width, bitmapData.image.height);
+		context.drawImage(bitmapData.__getElement(), 0, 0, bitmapData.width, bitmapData.height);
 	}
 
 	private function __renderDisplayObject(object:DisplayObject):Void
@@ -276,7 +281,7 @@ class CanvasRenderer extends CanvasRendererAPI
 			{
 				case BITMAP:
 					__renderBitmap(cast object);
-				case DISPLAY_OBJECT_CONTAINER:
+				case DISPLAY_OBJECT_CONTAINER, MOVIE_CLIP:
 					__renderDisplayObjectContainer(cast object);
 				case DISPLAY_OBJECT, SHAPE:
 					__renderShape(cast object);
@@ -333,21 +338,24 @@ class CanvasRenderer extends CanvasRendererAPI
 
 		__pushMaskObject(container);
 
+		var child = container.__firstChild;
 		if (__stage != null)
 		{
-			for (child in container.__children)
+			while (child != null)
 			{
 				__renderDisplayObject(child);
 				child.__renderDirty = false;
+				child = child.__nextSibling;
 			}
 
 			container.__renderDirty = false;
 		}
 		else
 		{
-			for (child in container.__children)
+			while (child != null)
 			{
 				__renderDisplayObject(child);
+				child = child.__nextSibling;
 			}
 		}
 
@@ -363,7 +371,7 @@ class CanvasRenderer extends CanvasRendererAPI
 				case BITMAP:
 					context.rect(0, 0, mask.width, mask.height);
 
-				case DISPLAY_OBJECT_CONTAINER:
+				case DISPLAY_OBJECT_CONTAINER, MOVIE_CLIP:
 					var container:DisplayObjectContainer = cast mask;
 					if (__domRenderer == null) container.__cleanupRemovedChildren();
 
@@ -372,9 +380,11 @@ class CanvasRenderer extends CanvasRendererAPI
 						CanvasGraphics.renderMask(container.__graphics, this);
 					}
 
-					for (child in container.__children)
+					var child = container.__firstChild;
+					while (child != null)
 					{
 						__renderMask(child);
+						child = child.__nextSibling;
 					}
 
 				case DOM_ELEMENT:
@@ -420,7 +430,7 @@ class CanvasRenderer extends CanvasRendererAPI
 
 	private function __renderTextField(textField:TextField):Void
 	{
-		#if (js && html5)
+		#if openfl_html5
 		// TODO: Better DOM workaround on cacheAsBitmap
 
 		if (__domRenderer != null && !textField.__renderedOnCanvasWhileOnDOM)
@@ -444,7 +454,7 @@ class CanvasRenderer extends CanvasRendererAPI
 
 		if (textField.mask == null || (textField.mask.width > 0 && textField.mask.height > 0))
 		{
-			__updateCacheBitmap(textField, /*!__worldColorTransform.__isDefault ()*/ false);
+			__updateCacheBitmap(textField, textField.__dirty);
 
 			if (textField.__cacheBitmap != null && !textField.__isCacheBitmapRender)
 			{
@@ -591,7 +601,7 @@ class CanvasRenderer extends CanvasRendererAPI
 			if (__worldColorTransform != null) colorTransform.__combine(__worldColorTransform);
 
 			var needRender = (object.__cacheBitmap == null
-				|| (object.__renderDirty && (force || (object.__children != null && object.__children.length > 0)))
+				|| (object.__renderDirty && (force || object.__firstChild != null))
 				|| object.opaqueBackground != object.__cacheBitmapBackground)
 				|| (object.__graphics != null && object.__graphics.__softwareDirty)
 				|| !object.__cacheBitmapColorTransform.__equals(colorTransform, true);
@@ -619,8 +629,8 @@ class CanvasRenderer extends CanvasRendererAPI
 
 			if (!needRender
 				&& object.__cacheBitmapData != null
-				&& object.__cacheBitmapData.image != null
-				&& object.__cacheBitmapData.image.version < object.__cacheBitmapData.__textureVersion)
+				&& object.__cacheBitmapData.__getCanvas() != null
+				&& object.__cacheBitmapData.__getVersion() < object.__cacheBitmapData.__textureVersion)
 			{
 				needRender = true;
 			}
@@ -760,15 +770,14 @@ class CanvasRenderer extends CanvasRendererAPI
 			{
 				if (object.__cacheBitmapRendererSW == null || object.__cacheBitmapRendererSW.__type != CANVAS)
 				{
-					if (object.__cacheBitmapData.image == null)
+					if (object.__cacheBitmapData.__getCanvas() == null)
 					{
 						var color = object.opaqueBackground != null ? (0xFF << 24) | object.opaqueBackground : 0;
 						object.__cacheBitmapData = new BitmapData(bitmapWidth, bitmapHeight, true, color);
 						object.__cacheBitmap.__bitmapData = object.__cacheBitmapData;
 					}
 
-					ImageCanvasUtil.convertToCanvas(object.__cacheBitmapData.image);
-					object.__cacheBitmapRendererSW = new CanvasRenderer(object.__cacheBitmapData.image.buffer.__srcContext);
+					object.__cacheBitmapRendererSW = new CanvasRenderer(object.__cacheBitmapData.__getCanvasContext());
 					object.__cacheBitmapRendererSW.__worldTransform = new Matrix();
 					object.__cacheBitmapRendererSW.__worldColorTransform = new ColorTransform();
 				}
@@ -818,7 +827,7 @@ class CanvasRenderer extends CanvasRendererAPI
 					if (needSecondBitmapData)
 					{
 						if (object.__cacheBitmapData2 == null
-							|| object.__cacheBitmapData2.image == null
+							|| object.__cacheBitmapData2.__getCanvas() == null
 							|| bitmapWidth > object.__cacheBitmapData2.width
 							|| bitmapHeight > object.__cacheBitmapData2.height)
 						{
@@ -838,7 +847,7 @@ class CanvasRenderer extends CanvasRendererAPI
 					if (needCopyOfOriginal)
 					{
 						if (object.__cacheBitmapData3 == null
-							|| object.__cacheBitmapData3.image == null
+							|| object.__cacheBitmapData3.__getCanvas() == null
 							|| bitmapWidth > object.__cacheBitmapData3.width
 							|| bitmapHeight > object.__cacheBitmapData3.height)
 						{
@@ -934,3 +943,4 @@ class CanvasRenderer extends CanvasRendererAPI
 		return updated;
 	}
 }
+#end

@@ -3,7 +3,7 @@ package openfl.display;
 #if !flash
 import openfl.geom.Matrix;
 import openfl.geom.Rectangle;
-#if (js && html5)
+#if openfl_html5
 import js.html.ImageElement;
 #end
 
@@ -80,10 +80,10 @@ class Bitmap extends DisplayObject
 	**/
 	public var smoothing:Bool;
 
-	#if (js && html5)
+	@:noCompletion private var __bitmapData:BitmapData;
+	#if openfl_html5
 	@:noCompletion private var __image:ImageElement;
 	#end
-	@:noCompletion private var __bitmapData:BitmapData;
 	@:noCompletion private var __imageVersion:Int;
 
 	#if openfljs
@@ -122,26 +122,21 @@ class Bitmap extends DisplayObject
 		}
 	}
 
-	@:noCompletion private override function __enterFrame(deltaTime:Int):Void
-	{
-		if (__bitmapData != null && __bitmapData.image != null && __bitmapData.image.version != __imageVersion)
-		{
-			__setRenderDirty();
-		}
-	}
-
 	@:noCompletion private override function __getBounds(rect:Rectangle, matrix:Matrix):Void
 	{
+		var bounds = Rectangle.__pool.get();
 		if (__bitmapData != null)
 		{
-			var bounds = Rectangle.__pool.get();
 			bounds.setTo(0, 0, __bitmapData.width, __bitmapData.height);
-			bounds.__transform(bounds, matrix);
-
-			rect.__expand(bounds.x, bounds.y, bounds.width, bounds.height);
-
-			Rectangle.__pool.release(bounds);
 		}
+		else
+		{
+			bounds.setTo(0, 0, 0, 0);
+		}
+
+		bounds.__transform(bounds, matrix);
+		rect.__expand(bounds.x, bounds.y, bounds.width, bounds.height);
+		Rectangle.__pool.release(bounds);
 	}
 
 	@:noCompletion private override function __hitTest(x:Float, y:Float, shapeFlag:Bool, stack:Array<DisplayObject>, interactiveOnly:Bool,
@@ -201,6 +196,7 @@ class Bitmap extends DisplayObject
 		__bitmapData = value;
 		smoothing = false;
 
+		__localBoundsDirty = true;
 		__setRenderDirty();
 
 		if (__filters != null)
@@ -213,20 +209,11 @@ class Bitmap extends DisplayObject
 		return __bitmapData;
 	}
 
-	@:noCompletion private override function get_height():Float
-	{
-		if (__bitmapData != null)
-		{
-			return __bitmapData.height * Math.abs(scaleY);
-		}
-		return 0;
-	}
-
 	@:noCompletion private override function set_height(value:Float):Float
 	{
 		if (__bitmapData != null)
 		{
-			scaleY = value / __bitmapData.height;
+			scaleY = value / __bitmapData.height; // get_height();
 		}
 		else
 		{
@@ -235,20 +222,11 @@ class Bitmap extends DisplayObject
 		return value;
 	}
 
-	@:noCompletion private override function get_width():Float
-	{
-		if (__bitmapData != null)
-		{
-			return __bitmapData.width * Math.abs(__scaleX);
-		}
-		return 0;
-	}
-
 	@:noCompletion private override function set_width(value:Float):Float
 	{
 		if (__bitmapData != null)
 		{
-			scaleX = value / __bitmapData.width;
+			scaleX = value / __bitmapData.width; // get_width();
 		}
 		else
 		{

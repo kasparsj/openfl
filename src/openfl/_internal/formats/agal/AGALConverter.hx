@@ -1,22 +1,23 @@
 package openfl._internal.formats.agal;
 
 import haxe.Int64;
+import openfl._internal.bindings.gl.GL;
 import openfl._internal.renderer.SamplerState;
 import openfl._internal.utils.Log;
 import openfl.display3D.Context3DMipFilter;
 import openfl.display3D.Context3DTextureFilter;
 import openfl.display3D.Context3DWrapMode;
+import openfl.display3D.Program3D;
 import openfl.errors.IllegalOperationError;
 import openfl.utils.ByteArray;
 import openfl.utils.Endian;
-#if lime
-import lime.graphics.opengl.GL;
-#end
 
 #if !openfl_debug
 @:fileXml('tags="haxe,release"')
 @:noDebug
 #end
+@:access(openfl.display3D.Context3D)
+@:access(openfl.display3D.Program3D)
 @SuppressWarnings("checkstyle:FieldDocComment")
 class AGALConverter
 {
@@ -50,8 +51,9 @@ class AGALConverter
 		return Int64.make(high, low);
 	}
 
-	public static function convertToGLSL(agal:ByteArray, samplerState:Array<SamplerState>):String
+	public static function convertToGLSL(program:Program3D, agal:ByteArray, samplerState:Array<SamplerState>):String
 	{
+		#if openfl_gl
 		agal.position = 0;
 		agal.endian = Endian.LITTLE_ENDIAN;
 
@@ -473,13 +475,12 @@ class AGALConverter
 			sb.add("\n");
 		}
 
-		#if lime
 		if (limitedProfile == null)
 		{
-			var version:String = GL.getParameter(GL.VERSION);
+			var gl = program.__context.gl;
+			var version:String = gl.getParameter(GL.VERSION);
 			limitedProfile = (version.indexOf("OpenGL ES") > -1 || version.indexOf("WebGL") > -1);
 		}
-		#end
 
 		// combine parts into final progam
 		var glsl = new StringBuf();
@@ -519,6 +520,9 @@ class AGALConverter
 
 		// System.Console.WriteLine(glsl);
 		return glsl.toString();
+		#else
+		return null;
+		#end
 	}
 }
 
@@ -786,7 +790,7 @@ class RegisterMap
 			}
 			else if (entry.usage == RegisterUsage.VECTOR_4_ARRAY)
 			{
-				sb.add(entry.name + "[32]"); // this is an array of "count" elements.
+				sb.add(entry.name + "[128]"); // this is an array of "count" elements.
 				sb.add(";\n");
 			}
 			else

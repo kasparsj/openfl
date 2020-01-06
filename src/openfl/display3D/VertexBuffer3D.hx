@@ -1,9 +1,10 @@
 package openfl.display3D;
 
 #if !flash
-import openfl._internal.backend.gl.GLBuffer;
-import openfl._internal.utils.ArrayBufferView;
-import openfl._internal.utils.Float32Array;
+import openfl._internal.bindings.gl.GLBuffer;
+import openfl._internal.bindings.gl.GL;
+import openfl._internal.bindings.typedarray.ArrayBufferView;
+import openfl._internal.bindings.typedarray.Float32Array;
 import openfl.utils.ByteArray;
 import openfl.Vector;
 
@@ -67,11 +68,13 @@ class VertexBuffer3D
 		__numVertices = numVertices;
 		__vertexSize = dataPerVertex;
 
+		#if openfl_gl
 		var gl = __context.gl;
 
 		__id = gl.createBuffer();
 		__stride = __vertexSize * 4;
-		__usage = (bufferUsage == Context3DBufferUsage.DYNAMIC_DRAW) ? gl.DYNAMIC_DRAW : gl.STATIC_DRAW;
+		__usage = (bufferUsage == Context3DBufferUsage.DYNAMIC_DRAW) ? GL.DYNAMIC_DRAW : GL.STATIC_DRAW;
+		#end
 	}
 
 	/**
@@ -80,8 +83,10 @@ class VertexBuffer3D
 	**/
 	public function dispose():Void
 	{
+		#if openfl_gl
 		var gl = __context.gl;
 		gl.deleteBuffer(__id);
+		#end
 	}
 
 	/**
@@ -106,7 +111,7 @@ class VertexBuffer3D
 	**/
 	public function uploadFromByteArray(data:ByteArray, byteArrayOffset:Int, startVertex:Int, numVertices:Int):Void
 	{
-		#if lime
+		#if openfl_gl
 		var offset = byteArrayOffset + startVertex * __stride;
 		var length = numVertices * __vertexSize;
 
@@ -125,11 +130,13 @@ class VertexBuffer3D
 	**/
 	public function uploadFromTypedArray(data:ArrayBufferView, byteLength:Int = -1):Void
 	{
+		#if openfl_gl
 		if (data == null) return;
 		var gl = __context.gl;
 
 		__context.__bindGLArrayBuffer(__id);
-		gl.bufferData(gl.ARRAY_BUFFER, data, __usage);
+		gl.bufferData(GL.ARRAY_BUFFER, data, __usage);
+		#end
 	}
 
 	/**
@@ -151,7 +158,7 @@ class VertexBuffer3D
 	**/
 	public function uploadFromVector(data:Vector<Float>, startVertex:Int, numVertices:Int):Void
 	{
-		#if lime
+		#if openfl_gl
 		if (data == null) return;
 		var gl = __context.gl;
 

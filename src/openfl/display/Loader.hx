@@ -20,6 +20,8 @@ import lime.utils.AssetLibrary as LimeAssetLibrary;
 import lime.utils.AssetManifest;
 #end
 
+using openfl._internal.utils.DisplayObjectLinkedList;
+
 /**
 	The Loader class is used to load SWF files or image (JPG, PNG, or GIF)
 	files. Use the `load()` method to initiate loading. The loaded
@@ -443,7 +445,7 @@ class Loader extends DisplayObjectContainer
 			contentLoaderInfo.contentType = request.contentType;
 		}
 
-		#if (js && html5)
+		#if openfl_html5
 		if (contentLoaderInfo.contentType.indexOf("image/") > -1
 			&& request.method == URLRequestMethod.GET
 			&& (request.requestHeaders == null || request.requestHeaders.length == 0)
@@ -562,11 +564,11 @@ class Loader extends DisplayObjectContainer
 		BitmapData.loadFromBytes(buffer).onComplete(BitmapData_onLoad).onError(BitmapData_onError);
 	}
 
-	public override function removeChild(child:DisplayObject):DisplayObject
-	{
-		throw new Error("Error #2069: The Loader class does not implement this method.", 2069);
-		return null;
-	}
+	// public override function removeChild(child:DisplayObject):DisplayObject
+	// {
+	// 	throw new Error("Error #2069: The Loader class does not implement this method.", 2069);
+	// 	return null;
+	// }
 
 	public override function removeChildAt(index:Int):DisplayObject
 	{
@@ -704,7 +706,7 @@ class Loader extends DisplayObjectContainer
 
 		if (content != null)
 		{
-			super.addChildAt(content, 0);
+			super.addChild(content);
 		}
 	}
 
@@ -795,7 +797,7 @@ class Loader extends DisplayObjectContainer
 		{
 			__setContent(new Sprite(), 0, 0);
 
-			#if (js && html5)
+			#if openfl_html5
 			// var script:ScriptElement = cast Browser.document.createElement ("script");
 			// script.innerHTML = loader.data;
 			// Browser.document.head.appendChild (script);

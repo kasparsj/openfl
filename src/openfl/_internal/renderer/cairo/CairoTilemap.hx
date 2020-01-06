@@ -1,5 +1,10 @@
 package openfl._internal.renderer.cairo;
 
+#if openfl_cairo
+import lime.math.Matrix3;
+import openfl._internal.bindings.cairo.CairoFilter;
+import openfl._internal.bindings.cairo.CairoPattern;
+import openfl._internal.bindings.cairo.CairoSurface;
 import openfl.display.BitmapData;
 import openfl.display.BlendMode;
 import openfl.display.TileContainer;
@@ -7,12 +12,6 @@ import openfl.display.Tilemap;
 import openfl.display.Tileset;
 import openfl.geom.Matrix;
 import openfl.geom.Rectangle;
-#if lime
-import lime.graphics.cairo.CairoFilter;
-import lime.graphics.cairo.CairoPattern;
-import lime.graphics.cairo.CairoSurface;
-import lime.math.Matrix3;
-#end
 
 #if !openfl_debug
 @:fileXml('tags="haxe,release"')
@@ -59,7 +58,6 @@ class CairoTilemap
 			surface:#if lime CairoSurface #else Dynamic #end, pattern:#if lime CairoPattern #else Dynamic #end, rect:Rectangle,
 			matrix:#if lime Matrix3 #else Dynamic #end):Void
 	{
-		#if lime
 		var cairo = renderer.cairo;
 
 		var tileTransform = Matrix.__pool.get();
@@ -165,6 +163,6 @@ class CairoTilemap
 		}
 
 		Matrix.__pool.release(tileTransform);
-		#end
 	}
 }
+#end

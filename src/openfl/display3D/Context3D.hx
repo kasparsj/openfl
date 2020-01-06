@@ -1,15 +1,16 @@
 package openfl.display3D;
 
 #if !flash
-import openfl._internal.backend.gl.GLBuffer;
-import openfl._internal.backend.gl.GLFramebuffer;
-import openfl._internal.backend.gl.GLTexture;
+import openfl._internal.bindings.gl.GLBuffer;
+import openfl._internal.bindings.gl.GLFramebuffer;
+import openfl._internal.bindings.gl.GLTexture;
+import openfl._internal.bindings.gl.GL;
 import openfl._internal.renderer.context3D.Context3DState;
 import openfl._internal.renderer.BitmapDataPool;
 import openfl._internal.renderer.SamplerState;
-import openfl._internal.utils.Float32Array;
-import openfl._internal.utils.UInt16Array;
-import openfl._internal.utils.UInt8Array;
+import openfl._internal.bindings.typedarray.Float32Array;
+import openfl._internal.bindings.typedarray.UInt16Array;
+import openfl._internal.bindings.typedarray.UInt8Array;
 import openfl.display3D.textures.CubeTexture;
 import openfl.display3D.textures.RectangleTexture;
 import openfl.display3D.textures.TextureBase;
@@ -30,9 +31,16 @@ import openfl.utils.ByteArray;
 import lime.graphics.Image;
 import lime.graphics.ImageBuffer;
 import lime.graphics.RenderContext;
-import lime.graphics.WebGLRenderContext;
 import lime.math.Rectangle as LimeRectangle;
 import lime.math.Vector2;
+import openfl._internal.bindings.gl.WebGLRenderingContext in WebGLRenderContext;
+#elseif openfl_html5
+import openfl._internal.backend.lime_standalone.Image;
+import openfl._internal.backend.lime_standalone.ImageBuffer;
+import openfl._internal.backend.lime_standalone.RenderContext;
+import openfl._internal.backend.lime_standalone.WebGLRenderContext;
+#else
+import openfl._internal.bindings.gl.WebGLRenderingContext in WebGLRenderContext;
 #end
 
 /**
@@ -150,7 +158,7 @@ import lime.math.Vector2;
 	/**
 		Indicates if Context3D supports video texture.
 	**/
-	public static var supportsVideoTexture(default, null):Bool = #if (js && html5) true #else false #end;
+	public static var supportsVideoTexture(default, null):Bool = #if openfl_html5 true #else false #end;
 
 	/**
 		Specifies the height of the back buffer, which can be changed by a successful
@@ -242,29 +250,31 @@ import lime.math.Vector2;
 		Context3D.
 
 		API totalGPUMemory returns the total memory consumed by the above resources to
-		the user. Default value returned is 0.The total GPU memory returned is in bytes.
+		the user. Default value returned is 0. The total GPU memory returned is in bytes.
 		The information is only provided in Direct mode on mobile, and in Direct and
 		GPU modes on desktop. (On desktop, using `<renderMode>gpu</renderMode>` will
 		fall back to `<renderMode>direct</renderMode>`)
 
 		This API can be used when the SWF version is 32 or later.
 	**/
-	public var totalGPUMemory(default, null):Int = 0;
+	public var totalGPUMemory(get, never):Int;
 
 	@:noCompletion private static var __driverInfo:String;
 	@:noCompletion private static var __glDepthStencil:Int = -1;
 	@:noCompletion private static var __glMaxTextureMaxAnisotropy:Int = -1;
 	@:noCompletion private static var __glMaxViewportDims:Int = -1;
+	@:noCompletion private static var __glMemoryCurrentAvailable:Int = -1;
+	@:noCompletion private static var __glMemoryTotalAvailable:Int = -1;
 	@:noCompletion private static var __glTextureMaxAnisotropy:Int = -1;
 
-	@:noCompletion private var gl:#if lime WebGLRenderContext #else Dynamic #end;
+	@:noCompletion private var gl:WebGLRenderContext;
 	@:noCompletion private var __backBufferAntiAlias:Int;
 	@:noCompletion private var __backBufferTexture:RectangleTexture;
 	@:noCompletion private var __backBufferWantsBestResolution:Bool;
 	@:noCompletion private var __backBufferWantsBestResolutionOnBrowserZoom:Bool;
 	@:noCompletion private var __bitmapDataPool:BitmapDataPool;
 	@:noCompletion private var __cleared:Bool;
-	@:noCompletion private var __context:#if lime RenderContext #else Dynamic #end;
+	@:noCompletion private var __context:#if (lime || openfl_html5) RenderContext #else Dynamic #end;
 	@:noCompletion private var __contextState:Context3DState;
 	@:noCompletion private var __renderStage3DProgram:Program3D;
 	@:noCompletion private var __enableErrorChecking:Bool;
@@ -289,23 +299,23 @@ import lime.math.Vector2;
 		__contextState = contextState;
 		__stage3D = stage3D;
 
-		__context = stage.window.context;
+		#if (lime && openfl_gl)
+		__context = stage.limeWindow.context;
 		gl = __context.webgl;
 
 		if (__contextState == null) __contextState = new Context3DState();
 		__state = new Context3DState();
 
-		#if lime
 		__vertexConstants = new Float32Array(4 * 128);
 		__fragmentConstants = new Float32Array(4 * 128);
 		__positionScale = new Float32Array([1.0, 1.0, 1.0, 1.0]);
-		#end
+
 		__programs = new Map<String, Program3D>();
 
 		if (__glMaxViewportDims == -1)
 		{
-			#if (js && html5)
-			__glMaxViewportDims = gl.getParameter(gl.MAX_VIEWPORT_DIMS);
+			#if openfl_html5
+			__glMaxViewportDims = gl.getParameter(GL.MAX_VIEWPORT_DIMS);
 			#else
 			__glMaxViewportDims = 16384;
 			#end
@@ -318,7 +328,7 @@ import lime.math.Vector2;
 		{
 			var extension:Dynamic = gl.getExtension("EXT_texture_filter_anisotropic");
 
-			#if (js && html5)
+			#if openfl_html5
 			if (extension == null
 				|| extension.MAX_TEXTURE_MAX_ANISOTROPY_EXT == null) extension = gl.getExtension("MOZ_EXT_texture_filter_anisotropic");
 			if (extension == null
@@ -337,12 +347,12 @@ import lime.math.Vector2;
 			}
 		}
 
-		#if lime
+		#if openfl_gl
 		if (__glDepthStencil == -1)
 		{
-			#if (js && html5)
-			__glDepthStencil = gl.DEPTH_STENCIL;
-			#else
+			#if openfl_html5
+			__glDepthStencil = GL.DEPTH_STENCIL;
+			#elseif lime
 			if (__context.type == OPENGLES && Std.parseFloat(__context.version) >= 3)
 			{
 				__glDepthStencil = __context.gles3.DEPTH24_STENCIL8;
@@ -369,14 +379,24 @@ import lime.math.Vector2;
 			}
 			#end
 		}
+
+		if (__glMemoryTotalAvailable == -1)
+		{
+			var extension = gl.getExtension("NVX_gpu_memory_info");
+			if (extension != null)
+			{
+				__glMemoryTotalAvailable = extension.GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX;
+				__glMemoryCurrentAvailable = extension.GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX;
+			}
+		}
 		#end
 
 		if (__driverInfo == null)
 		{
-			var vendor = gl.getParameter(gl.VENDOR);
-			var version = gl.getParameter(gl.VERSION);
-			var renderer = gl.getParameter(gl.RENDERER);
-			var glslVersion = gl.getParameter(gl.SHADING_LANGUAGE_VERSION);
+			var vendor = gl.getParameter(GL.VENDOR);
+			var version = gl.getParameter(GL.VERSION);
+			var renderer = gl.getParameter(GL.RENDERER);
+			var glslVersion = gl.getParameter(GL.SHADING_LANGUAGE_VERSION);
 
 			__driverInfo = "OpenGL Vendor=" + vendor + " Version=" + version + " Renderer=" + renderer + " GLSL=" + glslVersion;
 		}
@@ -386,7 +406,6 @@ import lime.math.Vector2;
 		__quadIndexBufferElements = Math.floor(0xFFFF / 4);
 		__quadIndexBufferCount = __quadIndexBufferElements * 6;
 
-		#if lime
 		var data = new UInt16Array(__quadIndexBufferCount);
 
 		var index:UInt = 0;
@@ -407,9 +426,9 @@ import lime.math.Vector2;
 
 		__quadIndexBuffer = createIndexBuffer(__quadIndexBufferCount);
 		__quadIndexBuffer.uploadFromTypedArray(data);
-		#end
 
 		__bitmapDataPool = new BitmapDataPool(30, this);
+		#end
 	}
 
 	/**
@@ -447,6 +466,7 @@ import lime.math.Vector2;
 	public function clear(red:Float = 0, green:Float = 0, blue:Float = 0, alpha:Float = 1, depth:Float = 1, stencil:UInt = 0,
 			mask:UInt = Context3DClearMask.ALL):Void
 	{
+		#if openfl_gl
 		__flushGLFramebuffer();
 		__flushGLViewport();
 
@@ -460,7 +480,7 @@ import lime.math.Vector2;
 				__cleared = true;
 			}
 
-			clearMask |= gl.COLOR_BUFFER_BIT;
+			clearMask |= GL.COLOR_BUFFER_BIT;
 
 			if (#if openfl_disable_context_cache true #else __contextState.colorMaskRed != true
 				|| __contextState.colorMaskGreen != true
@@ -479,7 +499,7 @@ import lime.math.Vector2;
 
 		if (mask & Context3DClearMask.DEPTH != 0)
 		{
-			clearMask |= gl.DEPTH_BUFFER_BIT;
+			clearMask |= GL.DEPTH_BUFFER_BIT;
 
 			if (#if openfl_disable_context_cache true #else __contextState.depthMask != true #end)
 			{
@@ -492,7 +512,7 @@ import lime.math.Vector2;
 
 		if (mask & Context3DClearMask.STENCIL != 0)
 		{
-			clearMask |= gl.STENCIL_BUFFER_BIT;
+			clearMask |= GL.STENCIL_BUFFER_BIT;
 
 			if (#if openfl_disable_context_cache true #else __contextState.stencilWriteMask != 0xFF #end)
 			{
@@ -508,6 +528,7 @@ import lime.math.Vector2;
 
 		__setGLScissorTest(false);
 		gl.clear(clearMask);
+		#end
 	}
 
 	/**
@@ -612,8 +633,11 @@ import lime.math.Vector2;
 			__state.backBufferEnableDepthAndStencil = enableDepthAndStencil;
 			__backBufferWantsBestResolution = wantsBestResolution;
 			__backBufferWantsBestResolutionOnBrowserZoom = wantsBestResolutionOnBrowserZoom;
+
+			#if openfl_gl
 			__state.__primaryGLFramebuffer = __backBufferTexture.__getGLFramebuffer(enableDepthAndStencil, antiAlias, 0);
 			__frontBufferTexture.__getGLFramebuffer(enableDepthAndStencil, antiAlias, 0);
+			#end
 		}
 	}
 
@@ -961,7 +985,7 @@ import lime.math.Vector2;
 	**/
 	public function createVideoTexture():VideoTexture
 	{
-		#if (js && html5)
+		#if openfl_html5
 		return new VideoTexture(this);
 		#else
 		throw new Error("Video textures are not supported on this platform");
@@ -1038,7 +1062,7 @@ import lime.math.Vector2;
 	**/
 	public function drawToBitmapData(destination:BitmapData, srcRect:Rectangle = null, destPoint:Point = null):Void
 	{
-		#if lime
+		#if (lime && openfl_gl)
 		if (destination == null) return;
 
 		var sourceRect = srcRect != null ? srcRect.__toLimeRectangle() : new LimeRectangle(0, 0, backBufferWidth, backBufferHeight);
@@ -1046,15 +1070,15 @@ import lime.math.Vector2;
 
 		if (__stage.context3D == this)
 		{
-			if (__stage.window != null)
+			if (__stage.limeWindow != null)
 			{
 				if (__stage3D != null)
 				{
 					destVector.setTo(Std.int(-__stage3D.x), Std.int(-__stage3D.y));
 				}
 
-				var image = __stage.window.readPixels();
-				destination.image.copyPixels(image, sourceRect, destVector);
+				var image = __stage.limeWindow.readPixels();
+				destination.limeImage.copyPixels(image, sourceRect, destVector);
 			}
 		}
 		else if (__backBufferTexture != null)
@@ -1068,10 +1092,10 @@ import lime.math.Vector2;
 			// TODO: Read less pixels if srcRect is smaller
 
 			var data = new UInt8Array(backBufferWidth * backBufferHeight * 4);
-			gl.readPixels(0, 0, backBufferWidth, backBufferHeight, __backBufferTexture.__format, gl.UNSIGNED_BYTE, data);
+			gl.readPixels(0, 0, backBufferWidth, backBufferHeight, __backBufferTexture.__format, GL.UNSIGNED_BYTE, data);
 
 			var image = new Image(new ImageBuffer(data, backBufferWidth, backBufferHeight, 32, BGRA32));
-			destination.image.copyPixels(image, sourceRect, destVector);
+			destination.limeImage.copyPixels(image, sourceRect, destVector);
 
 			if (cacheRenderToTexture != null)
 			{
@@ -1161,6 +1185,7 @@ import lime.math.Vector2;
 	**/
 	public function drawTriangles(indexBuffer:IndexBuffer3D, firstIndex:Int = 0, numTriangles:Int = -1):Void
 	{
+		#if openfl_gl
 		#if !openfl_disable_display_render
 		if (__state.renderToTexture == null)
 		{
@@ -1187,7 +1212,8 @@ import lime.math.Vector2;
 		var count = (numTriangles == -1) ? indexBuffer.__numIndices : (numTriangles * 3);
 
 		__bindGLElementArrayBuffer(indexBuffer.__id);
-		gl.drawElements(gl.TRIANGLES, count, gl.UNSIGNED_SHORT, firstIndex * 2);
+		gl.drawElements(GL.TRIANGLES, count, GL.UNSIGNED_SHORT, firstIndex * 2);
+		#end
 	}
 
 	/**
@@ -1212,6 +1238,7 @@ import lime.math.Vector2;
 	{
 		setRenderToBackBuffer();
 
+		#if openfl_gl
 		if (__stage3D != null && __backBufferTexture != null)
 		{
 			if (!__cleared)
@@ -1228,6 +1255,7 @@ import lime.math.Vector2;
 			__state.__primaryGLFramebuffer = __backBufferTexture.__getGLFramebuffer(__state.backBufferEnableDepthAndStencil, __backBufferAntiAlias, 0);
 			__cleared = false;
 		}
+		#end
 
 		__present = true;
 	}
@@ -1278,8 +1306,10 @@ import lime.math.Vector2;
 		__state.blendSourceAlphaFactor = sourceAlphaFactor;
 		__state.blendDestinationAlphaFactor = destinationAlphaFactor;
 
+		#if openfl_gl
 		// TODO: Better way to handle this?
-		__setGLBlendEquation(gl.FUNC_ADD);
+		__setGLBlendEquation(GL.FUNC_ADD);
+		#end
 	}
 
 	/**
@@ -1396,7 +1426,7 @@ import lime.math.Vector2;
 	public function setProgramConstantsFromByteArray(programType:Context3DProgramType, firstRegister:Int, numRegisters:Int, data:ByteArray,
 			byteArrayOffset:UInt):Void
 	{
-		#if lime
+		#if openfl_gl
 		if (numRegisters == 0 || __state.program == null) return;
 
 		if (__state.program != null && __state.program.__format == GLSL)
@@ -1415,7 +1445,12 @@ import lime.math.Vector2;
 			var isVertex = (programType == VERTEX);
 			var dest = isVertex ? __vertexConstants : __fragmentConstants;
 
+			#if (!lime && openfl_html5)
+			var bytes:haxe.io.Bytes = cast data;
+			var floatData = new Float32Array(bytes.getData(), 0, data.length);
+			#else
 			var floatData = Float32Array.fromBytes(data, 0, data.length);
+			#end
 			var outOffset = firstRegister * 4;
 			var inOffset = Std.int(byteArrayOffset / 4);
 
@@ -1454,7 +1489,7 @@ import lime.math.Vector2;
 	**/
 	public function setProgramConstantsFromMatrix(programType:Context3DProgramType, firstRegister:Int, matrix:Matrix3D, transposedMatrix:Bool = false):Void
 	{
-		#if lime
+		#if openfl_gl
 		if (__state.program != null && __state.program.__format == GLSL)
 		{
 			__flushGLProgram();
@@ -1861,6 +1896,7 @@ import lime.math.Vector2;
 	**/
 	public function setVertexBufferAt(index:Int, buffer:VertexBuffer3D, bufferOffset:Int = 0, format:Context3DVertexBufferFormat = FLOAT_4):Void
 	{
+		#if openfl_gl
 		if (buffer == null)
 		{
 			gl.disableVertexAttribArray(index);
@@ -1876,30 +1912,32 @@ import lime.math.Vector2;
 		switch (format)
 		{
 			case BYTES_4:
-				gl.vertexAttribPointer(index, 4, gl.UNSIGNED_BYTE, true, buffer.__stride, byteOffset);
+				gl.vertexAttribPointer(index, 4, GL.UNSIGNED_BYTE, true, buffer.__stride, byteOffset);
 
 			case FLOAT_4:
-				gl.vertexAttribPointer(index, 4, gl.FLOAT, false, buffer.__stride, byteOffset);
+				gl.vertexAttribPointer(index, 4, GL.FLOAT, false, buffer.__stride, byteOffset);
 
 			case FLOAT_3:
-				gl.vertexAttribPointer(index, 3, gl.FLOAT, false, buffer.__stride, byteOffset);
+				gl.vertexAttribPointer(index, 3, GL.FLOAT, false, buffer.__stride, byteOffset);
 
 			case FLOAT_2:
-				gl.vertexAttribPointer(index, 2, gl.FLOAT, false, buffer.__stride, byteOffset);
+				gl.vertexAttribPointer(index, 2, GL.FLOAT, false, buffer.__stride, byteOffset);
 
 			case FLOAT_1:
-				gl.vertexAttribPointer(index, 1, gl.FLOAT, false, buffer.__stride, byteOffset);
+				gl.vertexAttribPointer(index, 1, GL.FLOAT, false, buffer.__stride, byteOffset);
 
 			default:
 				throw new IllegalOperationError();
 		}
+		#end
 	}
 
+	#if openfl_gl
 	@:noCompletion private function __bindGLArrayBuffer(buffer:GLBuffer):Void
 	{
 		if (#if openfl_disable_context_cache true #else __contextState.__currentGLArrayBuffer != buffer #end)
 		{
-			gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+			gl.bindBuffer(GL.ARRAY_BUFFER, buffer);
 			__contextState.__currentGLArrayBuffer = buffer;
 		}
 	}
@@ -1908,7 +1946,7 @@ import lime.math.Vector2;
 	{
 		if (#if openfl_disable_context_cache true #else __contextState.__currentGLElementArrayBuffer != buffer #end)
 		{
-			gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffer);
+			gl.bindBuffer(GL.ELEMENT_ARRAY_BUFFER, buffer);
 			__contextState.__currentGLElementArrayBuffer = buffer;
 		}
 	}
@@ -1917,7 +1955,7 @@ import lime.math.Vector2;
 	{
 		if (#if openfl_disable_context_cache true #else __contextState.__currentGLFramebuffer != framebuffer #end)
 		{
-			gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+			gl.bindFramebuffer(GL.FRAMEBUFFER, framebuffer);
 			__contextState.__currentGLFramebuffer = framebuffer;
 		}
 	}
@@ -1928,7 +1966,7 @@ import lime.math.Vector2;
 
 		// if (#if openfl_disable_context_cache true #else __contextState.__currentGLTexture2D != texture #end) {
 
-		gl.bindTexture(gl.TEXTURE_2D, texture);
+		gl.bindTexture(GL.TEXTURE_2D, texture);
 		__contextState.__currentGLTexture2D = texture;
 
 		// }
@@ -1940,11 +1978,12 @@ import lime.math.Vector2;
 
 		// if (#if openfl_disable_context_cache true #else __contextState.__currentGLTextureCubeMap != texture #end) {
 
-		gl.bindTexture(gl.TEXTURE_CUBE_MAP, texture);
+		gl.bindTexture(GL.TEXTURE_CUBE_MAP, texture);
 		__contextState.__currentGLTextureCubeMap = texture;
 
 		// }
 	}
+	#end
 
 	@:noCompletion private function __dispose():Void
 	{
@@ -1972,6 +2011,7 @@ import lime.math.Vector2;
 
 	@:noCompletion private function __drawTriangles(firstIndex:Int = 0, count:Int):Void
 	{
+		#if openfl_gl
 		#if !openfl_disable_display_render
 		if (__state.renderToTexture == null)
 		{
@@ -1995,9 +2035,11 @@ import lime.math.Vector2;
 			__state.program.__flush();
 		}
 
-		gl.drawArrays(gl.TRIANGLES, firstIndex, count);
+		gl.drawArrays(GL.TRIANGLES, firstIndex, count);
+		#end
 	}
 
+	#if openfl_gl
 	@:noCompletion private function __flushGL():Void
 	{
 		__flushGLProgram();
@@ -2071,11 +2113,11 @@ import lime.math.Vector2;
 				{
 					case NONE: // skip
 					case BACK:
-						gl.cullFace(gl.BACK);
+						gl.cullFace(GL.BACK);
 					case FRONT:
-						gl.cullFace(gl.FRONT);
+						gl.cullFace(GL.FRONT);
 					case FRONT_AND_BACK:
-						gl.cullFace(gl.FRONT_AND_BACK);
+						gl.cullFace(GL.FRONT_AND_BACK);
 					default:
 						throw new IllegalOperationError();
 				}
@@ -2101,21 +2143,21 @@ import lime.math.Vector2;
 			switch (__state.depthCompareMode)
 			{
 				case ALWAYS:
-					gl.depthFunc(gl.ALWAYS);
+					gl.depthFunc(GL.ALWAYS);
 				case EQUAL:
-					gl.depthFunc(gl.EQUAL);
+					gl.depthFunc(GL.EQUAL);
 				case GREATER:
-					gl.depthFunc(gl.GREATER);
+					gl.depthFunc(GL.GREATER);
 				case GREATER_EQUAL:
-					gl.depthFunc(gl.GEQUAL);
+					gl.depthFunc(GL.GEQUAL);
 				case LESS:
-					gl.depthFunc(gl.LESS);
+					gl.depthFunc(GL.LESS);
 				case LESS_EQUAL:
-					gl.depthFunc(gl.LEQUAL);
+					gl.depthFunc(GL.LEQUAL);
 				case NEVER:
-					gl.depthFunc(gl.NEVER);
+					gl.depthFunc(GL.NEVER);
 				case NOT_EQUAL:
-					gl.depthFunc(gl.NOTEQUAL);
+					gl.depthFunc(GL.NOTEQUAL);
 				default:
 					throw new IllegalOperationError();
 			}
@@ -2217,6 +2259,7 @@ import lime.math.Vector2;
 
 	@:noCompletion private function __flushGLScissor():Void
 	{
+		#if (lime && openfl_gl)
 		if (!__state.scissorEnabled)
 		{
 			if (#if openfl_disable_context_cache true #else __contextState.scissorEnabled != __state.scissorEnabled #end)
@@ -2237,7 +2280,7 @@ import lime.math.Vector2;
 
 			if (__state.renderToTexture == null && __stage3D == null)
 			{
-				var contextHeight = Std.int(__stage.window.height * __stage.window.scale);
+				var contextHeight = Std.int(__stage.limeWindow.height * __stage.limeWindow.scale);
 				scissorY = contextHeight - Std.int(__state.scissorRectangle.height) - scissorY;
 			}
 
@@ -2250,6 +2293,7 @@ import lime.math.Vector2;
 				__contextState.scissorRectangle.setTo(scissorX, scissorY, scissorWidth, scissorHeight);
 			}
 		}
+		#end
 	}
 
 	@:noCompletion private function __flushGLStencil():Void
@@ -2300,14 +2344,14 @@ import lime.math.Vector2;
 				samplerState = __state.samplerStates[i];
 			}
 
-			gl.activeTexture(gl.TEXTURE0 + sampler);
+			gl.activeTexture(GL.TEXTURE0 + sampler);
 
 			if (texture != null)
 			{
 				// if (#if openfl_disable_context_cache true #else texture != __contextState.textures[i] #end) {
 
 				// TODO: Cleaner approach?
-				if (texture.__textureTarget == gl.TEXTURE_2D)
+				if (texture.__textureTarget == GL.TEXTURE_2D)
 				{
 					__bindGLTexture2D(texture.__getTexture());
 				}
@@ -2316,9 +2360,9 @@ import lime.math.Vector2;
 					__bindGLTextureCubeMap(texture.__getTexture());
 				}
 
-				#if desktop
+				#if (desktop && !html5)
 				// TODO: Cache?
-				gl.enable(gl.TEXTURE_2D);
+				gl.enable(GL.TEXTURE_2D);
 				#end
 
 				__contextState.textures[i] = texture;
@@ -2334,11 +2378,11 @@ import lime.math.Vector2;
 
 			if (__state.program != null && __state.program.__format == AGAL && samplerState.textureAlpha)
 			{
-				gl.activeTexture(gl.TEXTURE0 + sampler + 4);
+				gl.activeTexture(GL.TEXTURE0 + sampler + 4);
 
 				if (texture != null && texture.__alphaTexture != null)
 				{
-					if (texture.__alphaTexture.__textureTarget == gl.TEXTURE_2D)
+					if (texture.__alphaTexture.__textureTarget == GL.TEXTURE_2D)
 					{
 						__bindGLTexture2D(texture.__alphaTexture.__getTexture());
 					}
@@ -2350,15 +2394,18 @@ import lime.math.Vector2;
 					texture.__alphaTexture.__setSamplerState(samplerState);
 					gl.uniform1i(__state.program.__agalAlphaSamplerEnabled[sampler].location, 1);
 
-					#if desktop
+					#if (desktop && !html5)
 					// TODO: Cache?
-					gl.enable(gl.TEXTURE_2D);
+					gl.enable(GL.TEXTURE_2D);
 					#end
 				}
 				else
 				{
 					__bindGLTexture2D(null);
-					gl.uniform1i(__state.program.__agalAlphaSamplerEnabled[sampler].location, 0);
+					if (__state.program.__agalAlphaSamplerEnabled[sampler] != null)
+					{
+						gl.uniform1i(__state.program.__agalAlphaSamplerEnabled[sampler].location, 0);
+					}
 				}
 			}
 
@@ -2368,6 +2415,7 @@ import lime.math.Vector2;
 
 	@:noCompletion private function __flushGLViewport():Void
 	{
+		#if (lime && openfl_gl)
 		// TODO: Cache
 
 		if (__state.renderToTexture == null)
@@ -2375,7 +2423,7 @@ import lime.math.Vector2;
 			if (__stage.context3D == this)
 			{
 				var x = __stage3D == null ? 0 : Std.int(__stage3D.x);
-				var y = Std.int((__stage.window.height * __stage.window.scale) - backBufferHeight - (__stage3D == null ? 0 : __stage3D.y));
+				var y = Std.int((__stage.limeWindow.height * __stage.limeWindow.scale) - backBufferHeight - (__stage3D == null ? 0 : __stage3D.y));
 				gl.viewport(x, y, backBufferWidth, backBufferHeight);
 			}
 			else
@@ -2409,6 +2457,7 @@ import lime.math.Vector2;
 
 			gl.viewport(0, 0, width, height);
 		}
+		#end
 	}
 
 	@:noCompletion private function __getGLBlend(blendFactor:Context3DBlendFactor):Int
@@ -2416,25 +2465,25 @@ import lime.math.Vector2;
 		switch (blendFactor)
 		{
 			case DESTINATION_ALPHA:
-				return gl.DST_ALPHA;
+				return GL.DST_ALPHA;
 			case DESTINATION_COLOR:
-				return gl.DST_COLOR;
+				return GL.DST_COLOR;
 			case ONE:
-				return gl.ONE;
+				return GL.ONE;
 			case ONE_MINUS_DESTINATION_ALPHA:
-				return gl.ONE_MINUS_DST_ALPHA;
+				return GL.ONE_MINUS_DST_ALPHA;
 			case ONE_MINUS_DESTINATION_COLOR:
-				return gl.ONE_MINUS_DST_COLOR;
+				return GL.ONE_MINUS_DST_COLOR;
 			case ONE_MINUS_SOURCE_ALPHA:
-				return gl.ONE_MINUS_SRC_ALPHA;
+				return GL.ONE_MINUS_SRC_ALPHA;
 			case ONE_MINUS_SOURCE_COLOR:
-				return gl.ONE_MINUS_SRC_COLOR;
+				return GL.ONE_MINUS_SRC_COLOR;
 			case SOURCE_ALPHA:
-				return gl.SRC_ALPHA;
+				return GL.SRC_ALPHA;
 			case SOURCE_COLOR:
-				return gl.SRC_COLOR;
+				return GL.SRC_COLOR;
 			case ZERO:
-				return gl.ZERO;
+				return GL.ZERO;
 			default:
 				throw new IllegalOperationError();
 		}
@@ -2446,15 +2495,15 @@ import lime.math.Vector2;
 	{
 		return switch (mode)
 		{
-			case ALWAYS: gl.ALWAYS;
-			case EQUAL: gl.EQUAL;
-			case GREATER: gl.GREATER;
-			case GREATER_EQUAL: gl.GEQUAL;
-			case LESS: gl.LESS;
-			case LESS_EQUAL: gl.LEQUAL; // TODO : wrong value
-			case NEVER: gl.NEVER;
-			case NOT_EQUAL: gl.NOTEQUAL;
-			default: gl.EQUAL;
+			case ALWAYS: GL.ALWAYS;
+			case EQUAL: GL.EQUAL;
+			case GREATER: GL.GREATER;
+			case GREATER_EQUAL: GL.GEQUAL;
+			case LESS: GL.LESS;
+			case LESS_EQUAL: GL.LEQUAL; // TODO : wrong value
+			case NEVER: GL.NEVER;
+			case NOT_EQUAL: GL.NOTEQUAL;
+			default: GL.EQUAL;
 		}
 	}
 
@@ -2462,15 +2511,15 @@ import lime.math.Vector2;
 	{
 		return switch (action)
 		{
-			case DECREMENT_SATURATE: gl.DECR;
-			case DECREMENT_WRAP: gl.DECR_WRAP;
-			case INCREMENT_SATURATE: gl.INCR;
-			case INCREMENT_WRAP: gl.INCR_WRAP;
-			case INVERT: gl.INVERT;
-			case KEEP: gl.KEEP;
-			case SET: gl.REPLACE;
-			case ZERO: gl.ZERO;
-			default: gl.KEEP;
+			case DECREMENT_SATURATE: GL.DECR;
+			case DECREMENT_WRAP: GL.DECR_WRAP;
+			case INCREMENT_SATURATE: GL.INCR;
+			case INCREMENT_WRAP: GL.INCR_WRAP;
+			case INVERT: GL.INVERT;
+			case KEEP: GL.KEEP;
+			case SET: GL.REPLACE;
+			case ZERO: GL.ZERO;
+			default: GL.KEEP;
 		}
 	}
 
@@ -2478,13 +2527,14 @@ import lime.math.Vector2;
 	{
 		return switch (face)
 		{
-			case FRONT: gl.FRONT;
-			case BACK: gl.BACK;
-			case FRONT_AND_BACK: gl.FRONT_AND_BACK;
-			case NONE: gl.NONE;
-			default: gl.FRONT_AND_BACK;
+			case FRONT: GL.FRONT;
+			case BACK: GL.BACK;
+			case FRONT_AND_BACK: GL.FRONT_AND_BACK;
+			case NONE: GL.NONE;
+			default: GL.FRONT_AND_BACK;
 		}
 	}
+	#end
 
 	@:noCompletion private function __renderStage3D(stage3D:Stage3D):Void
 	{
@@ -2533,17 +2583,18 @@ import lime.math.Vector2;
 		}
 	}
 
+	#if openfl_gl
 	@:noCompletion private function __setGLBlend(enable:Bool):Void
 	{
 		if (#if openfl_disable_context_cache true #else __contextState.__enableGLBlend != enable #end)
 		{
 			if (enable)
 			{
-				gl.enable(gl.BLEND);
+				gl.enable(GL.BLEND);
 			}
 			else
 			{
-				gl.disable(gl.BLEND);
+				gl.disable(GL.BLEND);
 			}
 			__contextState.__enableGLBlend = enable;
 		}
@@ -2564,11 +2615,11 @@ import lime.math.Vector2;
 		{
 			if (enable)
 			{
-				gl.enable(gl.CULL_FACE);
+				gl.enable(GL.CULL_FACE);
 			}
 			else
 			{
-				gl.disable(gl.CULL_FACE);
+				gl.disable(GL.CULL_FACE);
 			}
 			__contextState.__enableGLCullFace = enable;
 		}
@@ -2580,11 +2631,11 @@ import lime.math.Vector2;
 		{
 			if (enable)
 			{
-				gl.enable(gl.DEPTH_TEST);
+				gl.enable(GL.DEPTH_TEST);
 			}
 			else
 			{
-				gl.disable(gl.DEPTH_TEST);
+				gl.disable(GL.DEPTH_TEST);
 			}
 			__contextState.__enableGLDepthTest = enable;
 		}
@@ -2594,7 +2645,7 @@ import lime.math.Vector2;
 	{
 		if (#if openfl_disable_context_cache true #else __contextState.__frontFaceGLCCW != counterClockWise #end)
 		{
-			gl.frontFace(counterClockWise ? gl.CCW : gl.CW);
+			gl.frontFace(counterClockWise ? GL.CCW : GL.CW);
 			__contextState.__frontFaceGLCCW = counterClockWise;
 		}
 	}
@@ -2605,11 +2656,11 @@ import lime.math.Vector2;
 		{
 			if (enable)
 			{
-				gl.enable(gl.SCISSOR_TEST);
+				gl.enable(GL.SCISSOR_TEST);
 			}
 			else
 			{
-				gl.disable(gl.SCISSOR_TEST);
+				gl.disable(GL.SCISSOR_TEST);
 			}
 			__contextState.__enableGLScissorTest = enable;
 		}
@@ -2621,15 +2672,16 @@ import lime.math.Vector2;
 		{
 			if (enable)
 			{
-				gl.enable(gl.STENCIL_TEST);
+				gl.enable(GL.STENCIL_TEST);
 			}
 			else
 			{
-				gl.disable(gl.STENCIL_TEST);
+				gl.disable(GL.STENCIL_TEST);
 			}
 			__contextState.__enableGLStencilTest = enable;
 		}
 	}
+	#end
 
 	// Get & Set Methods
 	@:noCompletion private function get_enableErrorChecking():Bool
@@ -2640,6 +2692,22 @@ import lime.math.Vector2;
 	@:noCompletion private function set_enableErrorChecking(value:Bool):Bool
 	{
 		return __enableErrorChecking = value;
+	}
+
+	@:noCompletion private function get_totalGPUMemory():Int
+	{
+		if (__glMemoryCurrentAvailable != -1)
+		{
+			// TODO: Return amount used by this application only
+			var current = gl.getParameter(__glMemoryCurrentAvailable);
+			var total = gl.getParameter(__glMemoryTotalAvailable);
+
+			if (total > 0)
+			{
+				return (total - current) * 1024;
+			}
+		}
+		return 0;
 	}
 }
 #else

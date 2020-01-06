@@ -1,15 +1,14 @@
 package openfl._internal.renderer.canvas;
 
+#if openfl_html5
+import js.html.CanvasRenderingContext2D;
+import js.Browser;
 import openfl._internal.text.TextEngine;
 import openfl.display.BitmapData;
 import openfl.geom.Matrix;
 import openfl.geom.Rectangle;
 import openfl.text.TextField;
 import openfl.text.TextFieldAutoSize;
-#if (js && html5)
-import js.html.CanvasRenderingContext2D;
-import js.Browser;
-#end
 
 @:access(openfl._internal.text.TextEngine)
 @:access(openfl.display.Graphics)
@@ -19,14 +18,14 @@ import js.Browser;
 @SuppressWarnings("checkstyle:FieldDocComment")
 class CanvasTextField
 {
-	#if (js && html5)
+	#if openfl_html5
 	private static var context:CanvasRenderingContext2D;
 	private static var clearRect:Null<Bool>;
 	#end
 
 	public static inline function render(textField:TextField, renderer:CanvasRenderer, transform:Matrix):Void
 	{
-		#if (js && html5)
+		#if openfl_html5
 		var textEngine = textField.__textEngine;
 		var bounds = (textEngine.background || textEngine.border) ? textEngine.bounds : textEngine.textBounds;
 		var graphics = textField.__graphics;
@@ -239,7 +238,11 @@ class CanvasTextField
 								if (selectionEnd >= group.endIndex)
 								{
 									end = textField.getCharBoundaries(group.endIndex - 1);
-									end.x += end.width + 2;
+
+									if (end != null)
+									{
+										end.x += end.width + 2;
+									}
 								}
 								else
 								{
@@ -311,11 +314,18 @@ class CanvasTextField
 							scrollY += textEngine.lineHeights[i];
 						}
 
+						var offsetX = switch (textField.defaultTextFormat.align)
+						{
+							case CENTER: (textField.width - 4) / 2;
+							case RIGHT: (textField.width - 4);
+							default: 0;
+						}
+
 						context.beginPath();
 						context.strokeStyle = "#" + StringTools.hex(textField.defaultTextFormat.color & 0xFFFFFF, 6);
-						context.moveTo(scrollX + 2.5, scrollY + 2.5);
+						context.moveTo(scrollX + offsetX + 2.5, scrollY + 2.5);
 						context.lineWidth = 1;
-						context.lineTo(scrollX + 2.5, scrollY + TextEngine.getFormatHeight(textField.defaultTextFormat) - 1);
+						context.lineTo(scrollX + offsetX + 2.5, scrollY + TextEngine.getFormatHeight(textField.defaultTextFormat) - 1);
 						context.stroke();
 						context.closePath();
 					}
@@ -331,3 +341,4 @@ class CanvasTextField
 		#end
 	}
 }
+#end

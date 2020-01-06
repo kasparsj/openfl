@@ -8,7 +8,6 @@ import openfl.events.EventDispatcher;
 import openfl.media.Sound;
 import openfl.text.Font;
 #if lime
-import lime.app.Promise;
 import lime.utils.AssetLibrary as LimeAssetLibrary;
 import lime.utils.Assets as LimeAssets;
 #end
@@ -369,7 +368,7 @@ class Assets
 			return false;
 		}
 		#else
-		return (bitmapData != null && #if !lime_hybrid bitmapData.image != null #else bitmapData.__handle != null #end);
+		return (bitmapData != null && #if !lime_hybrid bitmapData.limeImage != null #else bitmapData.__handle != null #end);
 		#end
 		#else
 		return true;
@@ -747,6 +746,19 @@ class Assets
 
 	public static function unloadLibrary(name:String):Void
 	{
+		if (name == null || name == "")
+		{
+			name = "default";
+			// TODO: Do we cache with the default prefix?
+			cache.clear(":");
+		}
+
+		var library = getLibrary(name);
+		if (library != null)
+		{
+			cache.clear(name + ":");
+		}
+
 		#if lime
 		LimeAssets.unloadLibrary(name);
 		#end

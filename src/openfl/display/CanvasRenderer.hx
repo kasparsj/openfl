@@ -3,6 +3,8 @@ package openfl.display;
 import openfl.geom.Matrix;
 #if lime
 import lime.graphics.Canvas2DRenderContext;
+#elseif openfl_html5
+import openfl._internal.backend.lime_standalone.Canvas2DRenderContext;
 #end
 
 /**
@@ -21,14 +23,14 @@ class CanvasRenderer extends DisplayObjectRenderer
 	/**
 		The current HTML5 canvas render context
 	**/
-	public var context:#if lime Canvas2DRenderContext #else Dynamic #end;
+	public var context:#if (lime || openfl_html5) Canvas2DRenderContext #else Dynamic #end;
 
 	/**
 		The active pixel ratio used during rendering
 	**/
 	public var pixelRatio(default, null):Float = 1;
 
-	@:noCompletion private function new(context:#if lime Canvas2DRenderContext #else Dynamic #end)
+	@:noCompletion private function new(context:#if (lime || openfl_html5) Canvas2DRenderContext #else Dynamic #end)
 	{
 		super();
 
@@ -38,11 +40,11 @@ class CanvasRenderer extends DisplayObjectRenderer
 	/**
 		Set whether smoothing should be enabled on a canvas context
 	**/
-	public function applySmoothing(context:#if lime Canvas2DRenderContext #else Dynamic #end, value:Bool):Void {}
+	public function applySmoothing(context:#if (lime || openfl_html5) Canvas2DRenderContext #else Dynamic #end, value:Bool):Void {}
 
 	/**
 		Set the matrix value for the current render context, or (optionally) another canvas
 		context
 	**/
-	public function setTransform(transform:Matrix, context:#if lime Canvas2DRenderContext #else Dynamic #end = null):Void {}
+	public function setTransform(transform:Matrix, context:#if (lime || openfl_html5) Canvas2DRenderContext #else Dynamic #end = null):Void {}
 }

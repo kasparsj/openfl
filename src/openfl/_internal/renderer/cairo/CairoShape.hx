@@ -1,8 +1,9 @@
 package openfl._internal.renderer.cairo;
 
-import lime.graphics.cairo.CairoFilter;
-import lime.graphics.cairo.CairoPattern;
+#if openfl_cairo
 import lime.math.Matrix3;
+import openfl._internal.bindings.cairo.CairoFilter;
+import openfl._internal.bindings.cairo.CairoPattern;
 import openfl.display.DisplayObject;
 import openfl.geom.Matrix;
 
@@ -20,7 +21,6 @@ class CairoShape
 
 	public static function render(shape:DisplayObject, renderer:CairoRenderer):Void
 	{
-		#if lime_cairo
 		if (!shape.__renderable) return;
 
 		var alpha = renderer.__getAlpha(shape.__worldAlpha);
@@ -159,6 +159,6 @@ class CairoShape
 				renderer.__popMaskObject(shape);
 			}
 		}
-		#end
 	}
 }
+#end
