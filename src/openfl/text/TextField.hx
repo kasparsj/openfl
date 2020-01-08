@@ -20,6 +20,7 @@ import openfl.events.FocusEvent;
 import openfl.events.KeyboardEvent;
 import openfl.events.MouseEvent;
 import openfl.events.TextEvent;
+import openfl.events.TouchEvent;
 import openfl.geom.Matrix;
 import openfl.geom.Rectangle;
 import openfl.net.URLRequest;
@@ -689,6 +690,7 @@ class TextField extends InteractiveObject
 	@:noCompletion private var __htmlText:UTF8String;
 	@:noCompletion private var __textEngine:TextEngine;
 	@:noCompletion private var __textFormat:TextFormat;
+    @:noCompletion private var __touchPoints:Map<Int, Dynamic>;
 	#if (js && html5)
 	@:noCompletion private var __div:DivElement;
 	@:noCompletion private var __renderedOnCanvasWhileOnDOM:Bool = false;
@@ -909,10 +911,7 @@ class TextField extends InteractiveObject
 
 		x += scrollH;
 
-		for (i in 0...scrollV - 1)
-		{
-			y += __textEngine.lineHeights[i];
-		}
+        y += __scrollY ();
 
 		for (group in __textEngine.layoutGroups)
 		{
@@ -1012,10 +1011,7 @@ class TextField extends InteractiveObject
 
 		if (x <= 2 || x > width + 4 || y <= 0 || y > height + 4) return -1;
 
-		for (i in 0...scrollV - 1)
-		{
-			y += __textEngine.lineHeights[i];
-		}
+        y += __scrollY ();
 
 		for (group in __textEngine.layoutGroups)
 		{
@@ -1681,6 +1677,8 @@ class TextField extends InteractiveObject
 			__inputEnabled = false;
 			__stopCursorTimer();
 		}
+        
+        removeEventListener (TouchEvent.TOUCH_BEGIN, this_onTouchBegin);
 	}
 
 	@:noCompletion private override function __dispatch(event:Event):Bool
@@ -1688,7 +1686,7 @@ class TextField extends InteractiveObject
 		if (event.eventPhase == AT_TARGET && event.type == MouseEvent.MOUSE_UP)
 		{
 			var event:MouseEvent = cast event;
-			var group = __getGroup(mouseX, mouseY, true);
+            var group = __getGroup (__scrollMouseX(), __scrollMouseY(), true);
 
 			if (group != null)
 			{
@@ -1731,6 +1729,9 @@ class TextField extends InteractiveObject
 				__inputEnabled = true;
 				__startCursorTimer();
 			}
+            
+            addEventListener (TouchEvent.TOUCH_BEGIN, this_onTouchBegin);
+            __touchPoints = new Map<Int, Dynamic>();
 		}
 		#end
 	}
@@ -1953,7 +1954,7 @@ class TextField extends InteractiveObject
 
 	@:noCompletion private override function __getCursor():MouseCursor
 	{
-		var group = __getGroup(mouseX, mouseY, true);
+        var group = __getGroup(__scrollMouseX(), __scrollMouseY(), true);
 
 		if (group != null && group.format.url != "")
 		{
@@ -2046,6 +2047,37 @@ class TextField extends InteractiveObject
 
 		return group.endIndex;
 	}
+            
+            
+
+	private function __scrollMouseX():Float {
+
+		return scrollH + mouseX;
+
+	}
+
+
+	private function __scrollMouseY():Float {
+
+		return __scrollY () + mouseY;
+
+	}
+
+
+	private function __scrollY():Float {
+
+		var y:Float = 0;
+
+		for (i in 0...scrollV - 1) {
+
+			y += __textEngine.lineHeights[i];
+
+		}
+
+		return y;
+
+	}
+            
 
 	@:noCompletion private override function __getRenderBounds(rect:Rectangle, matrix:Matrix):Void
 	{
@@ -3155,6 +3187,32 @@ class TextField extends InteractiveObject
 			}
 		}
 	}
+        
+
+
+	private function stage_onTouchMove(event:TouchEvent):Void {
+
+		if (__textEngine.lineHeights.length > 0 && Lambda.count(__touchPoints) == 1)
+		{
+			var touchPoint:Dynamic = __touchPoints.get(event.touchPointID);
+			var deltaY:Float = touchPoint.reminderY + event.stageY - touchPoint.y;
+			scrollV -= Math.floor(deltaY / __textEngine.lineHeights[0]);
+			touchPoint.reminderY = deltaY % __textEngine.lineHeights[0];
+			touchPoint.y = event.stageY;
+		}
+
+	}
+
+
+	private function stage_onTouchEnd(event:TouchEvent):Void {
+
+		stage.removeEventListener (TouchEvent.TOUCH_MOVE, stage_onTouchMove);
+		stage.removeEventListener (TouchEvent.TOUCH_END, stage_onTouchEnd);
+
+		__touchPoints.remove(event.touchPointID);
+
+	}
+    
 
 	@:noCompletion private function this_onAddedToStage(event:Event):Void
 	{
@@ -3215,7 +3273,7 @@ class TextField extends InteractiveObject
 
 	@:noCompletion private function this_onMouseDown(event:MouseEvent):Void
 	{
-		if (!selectable && type != INPUT) return;
+        if ((!selectable && type != INPUT) || (__touchPoints != null && Lambda.count(__touchPoints) > 0)) return;
 
 		__updateLayout();
 
@@ -3486,6 +3544,15 @@ class TextField extends InteractiveObject
 
 		// TODO: Dispatch change if at max chars?
 		dispatchEvent(new Event(Event.CHANGE, true));
+	}
+                
+	@:noCompletion private function this_onTouchBegin(event:TouchEvent):Void {
+
+		__touchPoints.set(event.touchPointID, {y: event.stageY, reminderY: 0});
+
+		stage.addEventListener (TouchEvent.TOUCH_MOVE, stage_onTouchMove);
+		stage.addEventListener (TouchEvent.TOUCH_END, stage_onTouchEnd);
+
 	}
 }
 #else
