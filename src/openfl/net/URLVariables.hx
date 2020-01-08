@@ -86,10 +86,11 @@ abstract URLVariables(Dynamic) from Dynamic to Dynamic
 		{
 			var value:Dynamic = Reflect.field(this, f);
 			if (f.indexOf("[]") > -1 && Std.is(value, Array)) {
+				f = StringTools.urlEncode(f);
 				var arrayValue:String = Lambda.map(value, function(v:String) {
 					return StringTools.urlEncode(v);
-				}).join('&amp;${f}=');
-				result.push(StringTools.urlEncode(f) + "=" + arrayValue);
+				}).join('&${f}=');
+				result.push(f + "=" + arrayValue);
 			}
 			else {
 				result.push(StringTools.urlEncode(f) + "=" + StringTools.urlEncode(value));
