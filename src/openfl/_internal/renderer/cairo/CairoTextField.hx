@@ -1,19 +1,21 @@
 package openfl._internal.renderer.cairo;
 
-#if openfl_cairo
-import openfl._internal.bindings.cairo.Cairo;
-import openfl._internal.bindings.cairo.CairoAntialias;
-import openfl._internal.bindings.cairo.CairoFontOptions;
-import openfl._internal.bindings.cairo.CairoFTFontFace;
-import openfl._internal.bindings.cairo.CairoGlyph;
-import openfl._internal.bindings.cairo.CairoHintMetrics;
-import openfl._internal.bindings.cairo.CairoHintStyle;
 import openfl._internal.text.TextEngine;
 import openfl.display.BitmapData;
+import openfl.display.CairoRenderer;
 import openfl.display.Graphics;
 import openfl.geom.Matrix;
 import openfl.geom.Rectangle;
 import openfl.text.TextField;
+#if lime
+import lime.graphics.cairo.Cairo;
+import lime.graphics.cairo.CairoAntialias;
+import lime.graphics.cairo.CairoFontOptions;
+import lime.graphics.cairo.CairoFTFontFace;
+import lime.graphics.cairo.CairoGlyph;
+import lime.graphics.cairo.CairoHintMetrics;
+import lime.graphics.cairo.CairoHintStyle;
+#end
 
 #if !openfl_debug
 @:fileXml('tags="haxe,release"')
@@ -28,6 +30,7 @@ class CairoTextField
 {
 	public static function render(textField:TextField, renderer:CairoRenderer, transform:Matrix):Void
 	{
+		#if lime_cairo
 		var textEngine = textField.__textEngine;
 		var bounds = (textEngine.background || textEngine.border) ? textEngine.bounds : textEngine.textBounds;
 		var graphics = textField.__graphics;
@@ -368,25 +371,19 @@ class CairoTextField
 
 			cairo.setSourceRGB(r, g, b);
 
-			var offsetX = switch (textField.defaultTextFormat.align)
-			{
-				case CENTER: (textField.width - 4) / 2;
-				case RIGHT: (textField.width - 4);
-				default: 0;
-			}
-
 			cairo.newPath();
-			cairo.moveTo(scrollX + offsetX + 2.5, scrollY + 2.5);
+			cairo.moveTo(scrollX + 2.5, scrollY + 2.5);
 			cairo.lineWidth = 1;
-			cairo.lineTo(scrollX + offsetX + 2.5, scrollY + TextEngine.getFormatHeight(textField.defaultTextFormat) - 1);
+			cairo.lineTo(scrollX + 2.5, scrollY + TextEngine.getFormatHeight(textField.defaultTextFormat) - 1);
 			cairo.stroke();
 			cairo.closePath();
 		}
 
-		graphics.__bitmap.__setDirty();
+		graphics.__bitmap.image.dirty = true;
+		graphics.__bitmap.image.version++;
 		textField.__dirty = false;
 		graphics.__softwareDirty = false;
 		graphics.__dirty = false;
+		#end
 	}
 }
-#end

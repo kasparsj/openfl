@@ -3,11 +3,10 @@ package openfl.display3D.textures;
 #if !flash
 import haxe.io.Bytes;
 import haxe.Timer;
-import openfl._internal.bindings.gl.GL;
 import openfl._internal.formats.atf.ATFReader;
 import openfl._internal.renderer.SamplerState;
-import openfl._internal.bindings.typedarray.ArrayBufferView;
-import openfl._internal.bindings.typedarray.UInt8Array;
+import openfl._internal.utils.ArrayBufferView;
+import openfl._internal.utils.UInt8Array;
 import openfl.display.BitmapData;
 import openfl.events.Event;
 import openfl.utils.ByteArray;
@@ -42,17 +41,15 @@ import openfl.utils.ByteArray;
 		__optimizeForRenderToTexture = optimizeForRenderToTexture;
 		__streamingLevels = streamingLevels;
 
-		#if openfl_gl
 		var gl = __context.gl;
 
-		__textureTarget = GL.TEXTURE_2D;
+		__textureTarget = gl.TEXTURE_2D;
 
 		__context.__bindGLTexture2D(__textureID);
-		gl.texImage2D(__textureTarget, 0, __internalFormat, __width, __height, 0, __format, GL.UNSIGNED_BYTE, null);
+		gl.texImage2D(__textureTarget, 0, __internalFormat, __width, __height, 0, __format, gl.UNSIGNED_BYTE, null);
 		__context.__bindGLTexture2D(null);
 
 		if (optimizeForRenderToTexture) __getGLFramebuffer(true, 0, 0);
-		#end
 	}
 
 	/**
@@ -136,7 +133,7 @@ import openfl.utils.ByteArray;
 	**/
 	public function uploadFromBitmapData(source:BitmapData, miplevel:UInt = 0, generateMipmap:Bool = false):Void
 	{
-		#if (lime || openfl_html5)
+		#if lime
 		/* TODO
 			if (LowMemoryMode) {
 				// shrink bitmap data
@@ -169,7 +166,7 @@ import openfl.utils.ByteArray;
 
 		// TODO: Improve handling of miplevels with canvas src
 
-		#if (openfl_gl && openfl_html5)
+		#if (js && html5)
 		if (miplevel == 0 && image.buffer != null && image.buffer.data == null && image.buffer.src != null)
 		{
 			var gl = __context.gl;
@@ -183,7 +180,7 @@ import openfl.utils.ByteArray;
 			if (height == 0) height = 1;
 
 			__context.__bindGLTexture2D(__textureID);
-			gl.texImage2D(__textureTarget, miplevel, __internalFormat, __format, GL.UNSIGNED_BYTE, image.buffer.src);
+			gl.texImage2D(__textureTarget, miplevel, __internalFormat, __format, gl.UNSIGNED_BYTE, image.buffer.src);
 			__context.__bindGLTexture2D(null);
 
 			return;
@@ -220,7 +217,7 @@ import openfl.utils.ByteArray;
 	**/
 	public function uploadFromByteArray(data:ByteArray, byteArrayOffset:UInt, miplevel:UInt = 0):Void
 	{
-		#if openfl_gl
+		#if lime
 		#if (js && !display)
 		if (byteArrayOffset == 0)
 		{
@@ -244,7 +241,6 @@ import openfl.utils.ByteArray;
 	**/
 	public function uploadFromTypedArray(data:ArrayBufferView, miplevel:UInt = 0):Void
 	{
-		#if openfl_gl
 		if (data == null) return;
 
 		var gl = __context.gl;
@@ -258,21 +254,19 @@ import openfl.utils.ByteArray;
 		if (height == 0) height = 1;
 
 		__context.__bindGLTexture2D(__textureID);
-		gl.texImage2D(__textureTarget, miplevel, __internalFormat, width, height, 0, __format, GL.UNSIGNED_BYTE, data);
+		gl.texImage2D(__textureTarget, miplevel, __internalFormat, width, height, 0, __format, gl.UNSIGNED_BYTE, data);
 		__context.__bindGLTexture2D(null);
-		#end
 	}
 
 	@:noCompletion private override function __setSamplerState(state:SamplerState):Bool
 	{
-		#if openfl_gl
 		if (super.__setSamplerState(state))
 		{
 			var gl = __context.gl;
 
 			if (state.mipfilter != MIPNONE && !__samplerState.mipmapGenerated)
 			{
-				gl.generateMipmap(GL.TEXTURE_2D);
+				gl.generateMipmap(gl.TEXTURE_2D);
 				__samplerState.mipmapGenerated = true;
 			}
 
@@ -292,19 +286,17 @@ import openfl.utils.ByteArray;
 					aniso = Context3D.__glMaxTextureMaxAnisotropy;
 				}
 
-				gl.texParameterf(GL.TEXTURE_2D, Context3D.__glTextureMaxAnisotropy, aniso);
+				gl.texParameterf(gl.TEXTURE_2D, Context3D.__glTextureMaxAnisotropy, aniso);
 			}
 
 			return true;
 		}
-		#end
 
 		return false;
 	}
 
 	@:noCompletion private function __uploadCompressedTextureFromByteArray(data:ByteArray, byteArrayOffset:UInt):Void
 	{
-		#if openfl_gl
 		var reader = new ATFReader(data, byteArrayOffset);
 		var alpha = reader.readHeader(__width, __height, false);
 
@@ -315,6 +307,7 @@ import openfl.utils.ByteArray;
 
 		var hasTexture = false;
 
+		#if lime
 		reader.readTextures(function(target, level, gpuFormat, width, height, blockLength, bytes:Bytes)
 		{
 			var format = alpha ? TextureBase.__compressedFormatsAlpha[gpuFormat] : TextureBase.__compressedFormats[gpuFormat];
@@ -352,11 +345,11 @@ import openfl.utils.ByteArray;
 		if (!hasTexture)
 		{
 			var data = new UInt8Array(__width * __height * 4);
-			gl.texImage2D(__textureTarget, 0, __internalFormat, __width, __height, 0, __format, GL.UNSIGNED_BYTE, data);
+			gl.texImage2D(__textureTarget, 0, __internalFormat, __width, __height, 0, __format, gl.UNSIGNED_BYTE, data);
 		}
+		#end
 
 		__context.__bindGLTexture2D(null);
-		#end
 	}
 }
 #else

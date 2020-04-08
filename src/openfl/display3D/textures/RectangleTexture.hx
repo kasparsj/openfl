@@ -1,12 +1,14 @@
 package openfl.display3D.textures;
 
 #if !flash
-import openfl._internal.bindings.gl.GL;
 import openfl._internal.renderer.SamplerState;
-import openfl._internal.bindings.typedarray.ArrayBufferView;
-import openfl._internal.bindings.typedarray.UInt8Array;
+import openfl._internal.utils.ArrayBufferView;
+import openfl._internal.utils.UInt8Array;
 import openfl.display.BitmapData;
 import openfl.utils.ByteArray;
+#if lime
+import lime.graphics.Image;
+#end
 
 /**
 	The Rectangle Texture class represents a 2-dimensional texture uploaded to a rendering
@@ -34,12 +36,10 @@ import openfl.utils.ByteArray;
 		// __format = format;
 		__optimizeForRenderToTexture = optimizeForRenderToTexture;
 
-		#if openfl_gl
-		__textureTarget = GL.TEXTURE_2D;
+		__textureTarget = __context.gl.TEXTURE_2D;
 		uploadFromTypedArray(null);
 
 		if (optimizeForRenderToTexture) __getGLFramebuffer(true, 0, 0);
-		#end
 	}
 
 	/**
@@ -54,19 +54,19 @@ import openfl.utils.ByteArray;
 	**/
 	public function uploadFromBitmapData(source:BitmapData):Void
 	{
-		#if (lime || openfl_html5)
+		#if lime
 		if (source == null) return;
 
 		var image = __getImage(source);
 		if (image == null) return;
 
-		#if (openfl_gl && openfl_html5)
+		#if (js && html5)
 		if (image.buffer != null && image.buffer.data == null && image.buffer.src != null)
 		{
 			var gl = __context.gl;
 
 			__context.__bindGLTexture2D(__textureID);
-			gl.texImage2D(__textureTarget, 0, __internalFormat, __format, GL.UNSIGNED_BYTE, image.buffer.src);
+			gl.texImage2D(__textureTarget, 0, __internalFormat, __format, gl.UNSIGNED_BYTE, image.buffer.src);
 			__context.__bindGLTexture2D(null);
 			return;
 		}
@@ -94,7 +94,7 @@ import openfl.utils.ByteArray;
 	**/
 	public function uploadFromByteArray(data:ByteArray, byteArrayOffset:UInt):Void
 	{
-		#if openfl_gl
+		#if lime
 		#if (js && !display)
 		if (byteArrayOffset == 0)
 		{
@@ -116,18 +116,15 @@ import openfl.utils.ByteArray;
 	**/
 	public function uploadFromTypedArray(data:ArrayBufferView):Void
 	{
-		#if openfl_gl
 		var gl = __context.gl;
 
 		__context.__bindGLTexture2D(__textureID);
-		gl.texImage2D(__textureTarget, 0, __internalFormat, __width, __height, 0, __format, GL.UNSIGNED_BYTE, data);
+		gl.texImage2D(__textureTarget, 0, __internalFormat, __width, __height, 0, __format, gl.UNSIGNED_BYTE, data);
 		__context.__bindGLTexture2D(null);
-		#end
 	}
 
 	@:noCompletion private override function __setSamplerState(state:SamplerState):Bool
 	{
-		#if openfl_gl
 		if (super.__setSamplerState(state))
 		{
 			var gl = __context.gl;
@@ -148,12 +145,11 @@ import openfl.utils.ByteArray;
 					aniso = Context3D.__glMaxTextureMaxAnisotropy;
 				}
 
-				gl.texParameterf(GL.TEXTURE_2D, Context3D.__glTextureMaxAnisotropy, aniso);
+				gl.texParameterf(gl.TEXTURE_2D, Context3D.__glTextureMaxAnisotropy, aniso);
 			}
 
 			return true;
 		}
-		#end
 
 		return false;
 	}

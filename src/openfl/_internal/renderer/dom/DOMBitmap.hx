@@ -1,16 +1,16 @@
 package openfl._internal.renderer.dom;
 
-#if openfl_html5
-import js.Browser;
 import openfl.display.Bitmap;
+import openfl.display.DOMRenderer;
 #if lime
+// TODO: Avoid use of private APIs
 import lime._internal.graphics.ImageCanvasUtil;
-#elseif openfl_html5
-import openfl._internal.backend.lime_standalone.ImageCanvasUtil;
+#end
+#if (js && html5)
+import js.Browser;
 #end
 
 @:access(lime.graphics.ImageBuffer)
-@:access(openfl._internal.backend.lime_standalone.ImageBuffer)
 @:access(openfl.display.Bitmap)
 @:access(openfl.display.BitmapData)
 @SuppressWarnings("checkstyle:FieldDocComment")
@@ -18,7 +18,7 @@ class DOMBitmap
 {
 	public static function clear(bitmap:Bitmap, renderer:DOMRenderer):Void
 	{
-		#if openfl_html5
+		#if (js && html5)
 		if (bitmap.__image != null)
 		{
 			renderer.element.removeChild(bitmap.__image);
@@ -37,13 +37,13 @@ class DOMBitmap
 
 	public static inline function render(bitmap:Bitmap, renderer:DOMRenderer):Void
 	{
-		#if openfl_html5
+		#if (js && html5)
 		if (bitmap.stage != null && bitmap.__worldVisible && bitmap.__renderable && bitmap.__bitmapData != null && bitmap.__bitmapData.__isValid
 			&& bitmap.__bitmapData.readable)
 		{
 			renderer.__pushMaskObject(bitmap);
 
-			if (bitmap.__bitmapData.limeImage.buffer.__srcImage != null)
+			if (bitmap.__bitmapData.image.buffer.__srcImage != null)
 			{
 				renderImage(bitmap, renderer);
 			}
@@ -63,7 +63,7 @@ class DOMBitmap
 
 	private static function renderCanvas(bitmap:Bitmap, renderer:DOMRenderer):Void
 	{
-		#if (lime && openfl_html5)
+		#if (js && html5)
 		if (bitmap.__image != null)
 		{
 			renderer.element.removeChild(bitmap.__image);
@@ -84,9 +84,9 @@ class DOMBitmap
 			renderer.__initializeElement(bitmap, bitmap.__canvas);
 		}
 
-		if (bitmap.__imageVersion != bitmap.__bitmapData.limeImage.version)
+		if (bitmap.__imageVersion != bitmap.__bitmapData.image.version)
 		{
-			ImageCanvasUtil.convertToCanvas(bitmap.__bitmapData.limeImage);
+			ImageCanvasUtil.convertToCanvas(bitmap.__bitmapData.image);
 
 			// Next line is workaround, to fix rendering bug in Chrome 59 (https://vimeo.com/222938554)
 			bitmap.__canvas.width = bitmap.__bitmapData.width + 1;
@@ -94,8 +94,8 @@ class DOMBitmap
 			bitmap.__canvas.width = bitmap.__bitmapData.width;
 			bitmap.__canvas.height = bitmap.__bitmapData.height;
 
-			bitmap.__context.drawImage(bitmap.__bitmapData.limeImage.buffer.__srcCanvas, 0, 0);
-			bitmap.__imageVersion = bitmap.__bitmapData.limeImage.version;
+			bitmap.__context.drawImage(bitmap.__bitmapData.image.buffer.__srcCanvas, 0, 0);
+			bitmap.__imageVersion = bitmap.__bitmapData.image.version;
 		}
 
 		renderer.__updateClip(bitmap);
@@ -105,7 +105,7 @@ class DOMBitmap
 
 	private static function renderImage(bitmap:Bitmap, renderer:DOMRenderer):Void
 	{
-		#if openfl_html5
+		#if (js && html5)
 		if (bitmap.__canvas != null)
 		{
 			renderer.element.removeChild(bitmap.__canvas);
@@ -116,7 +116,7 @@ class DOMBitmap
 		{
 			bitmap.__image = cast Browser.document.createElement("img");
 			bitmap.__image.crossOrigin = "Anonymous";
-			bitmap.__image.src = bitmap.__bitmapData.limeImage.buffer.__srcImage.src;
+			bitmap.__image.src = bitmap.__bitmapData.image.buffer.__srcImage.src;
 			renderer.__initializeElement(bitmap, bitmap.__image);
 		}
 
@@ -125,4 +125,3 @@ class DOMBitmap
 		#end
 	}
 }
-#end

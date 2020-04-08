@@ -1,9 +1,11 @@
 package openfl._internal.renderer.dom;
 
-#if openfl_html5
-import js.Browser;
 import openfl._internal.renderer.canvas.CanvasTilemap;
+import openfl.display.DOMRenderer;
 import openfl.display.Tilemap;
+#if (js && html5)
+import js.Browser;
+#end
 
 @:access(openfl.display.TileContainer)
 @:access(openfl.display.Tilemap)
@@ -13,7 +15,7 @@ class DOMTilemap
 {
 	public static function clear(tilemap:Tilemap, renderer:DOMRenderer):Void
 	{
-		#if openfl_html5
+		#if (js && html5)
 		if (tilemap.__canvas != null)
 		{
 			renderer.element.removeChild(tilemap.__canvas);
@@ -27,7 +29,7 @@ class DOMTilemap
 	{
 		// TODO: Support GL-based Tilemap?
 
-		#if openfl_html5
+		#if (js && html5)
 		if (tilemap.stage != null && tilemap.__worldVisible && tilemap.__renderable && tilemap.__group.__tiles.length > 0)
 		{
 			if (tilemap.__canvas == null)
@@ -56,4 +58,3 @@ class DOMTilemap
 		#end
 	}
 }
-#end

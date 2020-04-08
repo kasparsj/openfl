@@ -1,8 +1,8 @@
 package openfl._internal.renderer.dom;
 
-#if openfl_html5
 import openfl._internal.renderer.canvas.CanvasGraphics;
 import openfl.display.DisplayObject;
+import openfl.display.DOMRenderer;
 
 @:access(openfl.display.DisplayObject)
 @:access(openfl.display.Graphics)
@@ -13,7 +13,7 @@ class DOMShape
 {
 	public static function clear(shape:DisplayObject, renderer:DOMRenderer):Void
 	{
-		#if openfl_html5
+		#if (js && html5)
 		if (shape.__canvas != null)
 		{
 			renderer.element.removeChild(shape.__canvas);
@@ -25,7 +25,7 @@ class DOMShape
 
 	public static inline function render(shape:DisplayObject, renderer:DOMRenderer):Void
 	{
-		#if openfl_html5
+		#if (js && html5)
 		var graphics = shape.__graphics;
 
 		if (shape.stage != null && shape.__worldVisible && shape.__renderable && graphics != null)
@@ -83,4 +83,3 @@ class DOMShape
 		#end
 	}
 }
-#end

@@ -1,7 +1,7 @@
 package openfl._internal.renderer.dom;
 
-#if openfl_html5
 import openfl.display.DisplayObject;
+import openfl.display.DOMRenderer;
 
 @:access(openfl.display.DisplayObject)
 @:access(openfl.geom.Matrix)
@@ -10,7 +10,7 @@ class DOMDisplayObject
 {
 	public static function clear(displayObject:DisplayObject, renderer:DOMRenderer):Void
 	{
-		#if openfl_html5
+		#if (js && html5)
 		if (displayObject.__cacheBitmap != null)
 		{
 			DOMBitmap.clear(displayObject.__cacheBitmap, renderer);
@@ -21,7 +21,7 @@ class DOMDisplayObject
 
 	public static inline function render(displayObject:DisplayObject, renderer:DOMRenderer):Void
 	{
-		#if openfl_html5
+		#if (js && html5)
 		// if (displayObject.opaqueBackground == null && displayObject.__graphics == null) return;
 		// if (!displayObject.__renderable || displayObject.__worldAlpha <= 0) return;
 
@@ -41,4 +41,3 @@ class DOMDisplayObject
 		#end
 	}
 }
-#end
