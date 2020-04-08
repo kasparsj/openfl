@@ -12,6 +12,7 @@ import openfl.display.DOMRenderer as DOMRendererAPI;
 import openfl.display.DisplayObject;
 import openfl.display.DisplayObjectContainer;
 import openfl.display.IBitmapDrawable;
+import openfl.display.InteractiveObject;
 import openfl.display.Shape;
 import openfl.display.SimpleButton;
 import openfl.display.Tilemap;
@@ -162,6 +163,15 @@ class DOMRenderer extends DOMRendererAPI
 				style.setProperty("clip", "rect(" + clip.y + "px, " + clip.right + "px, " + clip.bottom + "px, " + clip.x + "px)", null);
 			}
 		}
+
+		if (displayObject.__getInteractive(null) && !cast(displayObject, InteractiveObject).mouseEnabled)
+		{
+			style.setProperty("pointer-events", "none", null);
+		}
+		else
+		{
+			style.removeProperty("pointer-events");
+		}
 		#end
 	}
 
@@ -220,6 +230,8 @@ class DOMRenderer extends DOMRendererAPI
 	private function __clearDOMElement(domElement:DOMElement):Void
 	{
 		DOMDisplayObject.clear(domElement, this);
+
+		clearStyle(domElement.__element);
 	}
 
 	private function __clearShape(shape:DisplayObject):Void

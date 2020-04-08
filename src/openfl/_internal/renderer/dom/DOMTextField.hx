@@ -267,7 +267,8 @@ class DOMTextField
 					textField.__textFormat.size = unscaledSize;
 					textField.__textFormat.leading = unscaledLeading;
 
-					style.setProperty("top", "3px", null);
+					style.setProperty("top", "1px", null);
+					//style.setProperty("top", "3px", null);
 
 					if (textEngine.border)
 					{
