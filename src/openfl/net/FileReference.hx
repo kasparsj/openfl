@@ -1294,6 +1294,7 @@ class FileReference extends EventDispatcher
 	{
 		__load(function():Void {
 			var urlRequest:URLRequest = new URLRequest();
+			urlRequest.idleTimeout = request.idleTimeout;
 			urlRequest.url = request.url;
 			urlRequest.contentType = 'multipart/form-data; boundary=' + UploadPostHelper.getBoundary();
 			urlRequest.method = URLRequestMethod.POST;
