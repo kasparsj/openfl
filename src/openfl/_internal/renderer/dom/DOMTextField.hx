@@ -82,7 +82,7 @@ class DOMTextField
 					{
 						textField.__div = cast Browser.document.createElement("div");
 						renderer.__initializeElement(textField, textField.__div);
-						textField.__style.setProperty("outline", "none", null);
+						textField.__style.setProperty("outline", "1px solid transparent", null);
 
 						textField.__div.addEventListener("input", function(event)
 						{
