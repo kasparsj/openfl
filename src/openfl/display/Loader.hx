@@ -20,6 +20,13 @@ import lime.utils.AssetLibrary as LimeAssetLibrary;
 import lime.utils.AssetManifest;
 #end
 
+#if (js && html5)
+import lime.app.Future;
+#if lime
+@:access(lime.app.Future)
+#end
+#end
+
 /**
 	The Loader class is used to load SWF files or image (JPG, PNG, or GIF)
 	files. Use the `load()` method to initiate loading. The loaded
@@ -146,6 +153,10 @@ class Loader extends DisplayObjectContainer
 	@:noCompletion private var __library:AssetLibrary;
 	@:noCompletion private var __path:String;
 	@:noCompletion private var __unloaded:Bool;
+	#if (js && html5)
+	@:noCompletion private var __futureBitmapData:Future<BitmapData>;
+	#end
+	@:noCompletion private var __urlLoader:URLLoader;
 
 	/**
 		Creates a Loader object that you can use to load files, such as SWF, JPEG,
@@ -223,7 +234,19 @@ class Loader extends DisplayObjectContainer
 	**/
 	public function close():Void
 	{
-		openfl._internal.Lib.notImplemented();
+		#if (js && html5)
+		if (__futureBitmapData != null) {
+			#if lime
+			__futureBitmapData.__completeListeners = null;
+			__futureBitmapData.__errorListeners = null;
+			__futureBitmapData.__progressListeners = null;
+			__futureBitmapData = null;
+			#end
+		}
+		#end
+		if (__urlLoader != null) {
+			__urlLoader.close();
+		}
 	}
 	#end
 
@@ -449,7 +472,7 @@ class Loader extends DisplayObjectContainer
 			&& (request.requestHeaders == null || request.requestHeaders.length == 0)
 			&& request.userAgent == null)
 		{
-			BitmapData.loadFromFile(request.url)
+			__futureBitmapData = BitmapData.loadFromFile(request.url)
 				.onComplete(BitmapData_onLoad)
 				.onError(BitmapData_onError)
 				.onProgress(BitmapData_onProgress);
@@ -471,6 +494,7 @@ class Loader extends DisplayObjectContainer
 		loader.addEventListener(IOErrorEvent.IO_ERROR, loader_onError);
 		loader.addEventListener(ProgressEvent.PROGRESS, loader_onProgress);
 		loader.load(request);
+		__urlLoader = loader;
 	}
 
 	/**
