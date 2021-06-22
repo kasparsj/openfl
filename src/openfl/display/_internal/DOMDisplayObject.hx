@@ -63,5 +63,8 @@ class DOMDisplayObject
 	public static function renderDrawableClear(displayObject:DisplayObject, renderer:DOMRenderer):Void
 	{
 		DOMDisplayObject.clear(displayObject, renderer);
+
+		// todo: perhaps needs:
+		// renderer.clearStyle();
 	}
 }

@@ -121,7 +121,7 @@ class DOMBitmap
 		}
 		else
 		{
-			DOMDisplayObject.render(bitmap, renderer);
+			//DOMDisplayObject.render(bitmap, renderer);
 			DOMBitmap.render(bitmap, renderer);
 		}
 
