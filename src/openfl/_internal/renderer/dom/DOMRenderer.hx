@@ -430,7 +430,7 @@ class DOMRenderer extends DOMRendererAPI
 		}
 		else
 		{
-			DOMDisplayObject.render(bitmap, this);
+			//DOMDisplayObject.render(bitmap, this);
 			DOMBitmap.render(bitmap, this);
 		}
 	}
