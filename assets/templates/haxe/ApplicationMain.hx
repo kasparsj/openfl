@@ -188,7 +188,8 @@ class ApplicationMain
 				{
 					return macro
 					{
-						var current = stage.getChildAt (0);
+                        //var current = stage.getChildAt (0);
+						var current:openfl.display.DisplayObjectContainer = openfl.Lib.current;
 
 						if (current == null || !(current is openfl.display.DisplayObjectContainer))
 						{

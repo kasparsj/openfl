@@ -181,6 +181,15 @@ class DOMRenderer extends DisplayObjectRenderer
 				style.setProperty("clip", "rect(" + clip.y + "px, " + clip.right + "px, " + clip.bottom + "px, " + clip.x + "px)", null);
 			}
 		}
+
+		if (displayObject.__getInteractive(null) && !cast(displayObject, InteractiveObject).mouseEnabled)
+		{
+			style.setProperty("pointer-events", "none", null);
+		}
+		else
+		{
+			style.removeProperty("pointer-events");
+		}
 		#end
 	}
 

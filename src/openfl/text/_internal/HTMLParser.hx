@@ -25,6 +25,7 @@ class HTMLParser
 	private static var __regexRightMargin:EReg = ~/rightmargin\s?=\s?("([^"]+)"|'([^']+)')/i;
 	private static var __regexSize:EReg = ~/size\s?=\s?("([^"]+)"|'([^']+)')/i;
 	private static var __regexTabStops:EReg = ~/tabstops\s?=\s?("([^"]+)"|'([^']+)')/i;
+	private static var __regexStyle:EReg = ~/style\s?=\s?("([^"]+)"|'([^']+)')/i;
 
 	public static function parse(value:String, textFormat:TextFormat, textFormatRanges:Vector<TextFormatRange>):String
 	{
@@ -127,6 +128,11 @@ class HTMLParser
 									format.align = align;
 								}
 
+								if (__regexStyle.match(segment))
+								{
+									applyStyle(__regexStyle, format);
+								}
+
 							case "font":
 								if (__regexFace.match(segment))
 								{
@@ -162,6 +168,12 @@ class HTMLParser
 
 							case "i", "em":
 								format.italic = true;
+
+							case "span":
+								if (__regexStyle.match(segment))
+								{
+									applyStyle(__regexStyle, format);
+								}
 
 							case "textformat":
 								if (__regexBlockIndent.match(segment))
@@ -231,6 +243,53 @@ class HTMLParser
 		}
 
 		return value;
+	}
+
+	private static function applyStyle(regex:EReg, format:TextFormat)
+	{
+		var styleAttr = __getAttributeMatch(regex);
+		var style:Dynamic = __parseStyle(styleAttr);
+		for (prop in Reflect.fields(style)) {
+			switch (prop) {
+				case "font-size":
+					format.size = Std.parseInt(Reflect.field(style, prop));
+				case "text-decoration":
+					format.underline = Reflect.field(style, prop) == "underline";
+				case "font-style":
+					format.italic = Reflect.field(style, prop) == "italic";
+				case "font-weight":
+					format.bold = Reflect.field(style, prop) == "bold" || Std.parseInt(Reflect.field(style, prop)) >= 700;
+				case "font-family":
+					format.font = Reflect.field(style, prop);
+				case "text-align":
+					format.align = cast(Reflect.field(style, prop), String).toLowerCase();
+				case "color":
+					format.color = Std.parseInt("0x" + Std.string(Std.parseInt(Reflect.field(style, prop))));
+				case "line-height":
+					format.leading = Std.parseInt(Reflect.field(style, prop));
+				case "text-indent":
+					format.indent = Std.parseInt(Reflect.field(style, prop));
+				case "margin-left":
+					format.leftMargin = Std.parseInt(Reflect.field(style, prop));
+				case "margin-right":
+					format.rightMargin = Std.parseInt(Reflect.field(style, prop));
+			}
+		}
+	}
+
+	private static function __parseStyle(value:String):Dynamic
+	{
+		var style:Dynamic = {};
+		var defs:Array<String> = value.split(";");
+		for (def in defs) {
+			var idx:Int = def.indexOf(":");
+			if (idx > -1) {
+				var name:String = StringTools.trim(def.substring(0, idx));
+				var value:String = StringTools.trim(def.substring(idx+1));
+				Reflect.setField(style, name.toLowerCase(), value.toLowerCase());
+			}
+		}
+		return style;
 	}
 
 	private static function __getAttributeMatch(regex:EReg):String

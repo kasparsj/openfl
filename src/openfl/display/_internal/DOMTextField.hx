@@ -90,7 +90,7 @@ class DOMTextField
 					{
 						textField.__div = cast Browser.document.createElement("div");
 						renderer.__initializeElement(textField, textField.__div);
-						textField.__style.setProperty("outline", "none", null);
+						textField.__style.setProperty("outline", "1px solid transparent", null);
 
 						textField.__div.addEventListener("input", function(event)
 						{
@@ -277,7 +277,8 @@ class DOMTextField
 					textField.__textFormat.size = unscaledSize;
 					textField.__textFormat.leading = unscaledLeading;
 
-					style.setProperty("top", "3px", null);
+					style.setProperty("top", "1px", null);
+					//style.setProperty("top", "3px", null);
 
 					if (textEngine.border)
 					{
