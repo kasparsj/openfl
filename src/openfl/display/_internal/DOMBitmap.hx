@@ -147,6 +147,7 @@ class DOMBitmap
 			bitmap.__image = cast Browser.document.createElement("img");
 			bitmap.__image.crossOrigin = "Anonymous";
 			bitmap.__image.src = bitmap.__bitmapData.image.buffer.__srcImage.src;
+			bitmap.__image.alt = Reflect.field(bitmap, "alt");
 			renderer.__initializeElement(bitmap, bitmap.__image);
 		}
 
