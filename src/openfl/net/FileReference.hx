@@ -65,7 +65,7 @@ import js.Browser;
 
 	The FileReference and FileReferenceList classes also do not provide
 	methods for authentication. With servers that require authentication, you
-	can download files with the Flash<sup>஼/sup> Player browser plug-in, but
+	can download files with the Flash<sup>?/sup> Player browser plug-in, but
 	uploading (on all players) and downloading (on the stand-alone or external
 	player) fails. Listen for FileReference events to determine whether
 	operations complete successfully and to handle errors.
@@ -218,8 +218,8 @@ import js.Browser;
 							  Valid protocols are HTTP and HTTPS.
 
 							  **Important:** Only applications running in a
-							  browser נthat is, using the browser plug-in
-							  or ActiveX control נand content running in
+							  browser ?that is, using the browser plug-in
+							  or ActiveX control ?and content running in
 							  Adobe AIR can provide a dialog box to prompt the
 							  user to enter a user name and password for
 							  authentication, and then only for downloads. For
@@ -325,7 +325,7 @@ class FileReference extends EventDispatcher
 									  unsuccessful. In this case, the value of
 									  the `creationDate` property is `null`.
 	**/
-	public var creationDate(default, null):Date;
+	public var creationDate(get, null):Date;	
 
 	/**
 		The Macintosh creator type of the file, which is only used in Mac OS
@@ -345,7 +345,7 @@ class FileReference extends EventDispatcher
 									  the `creator` property is `null`.
 	**/
 	public var creator(default, null):String;
-
+	
 	/**
 		The ByteArray object representing the data from the loaded file after
 		a successful call to the `load()` method.
@@ -385,7 +385,7 @@ class FileReference extends EventDispatcher
 									  the `modificationDate` property is
 									  `null`.
 	**/
-	public var modificationDate(default, null):Date;
+	public var modificationDate(get, null):Date;	
 
 	/**
 		The name of the file on the local disk. If the FileReference object
@@ -406,8 +406,8 @@ class FileReference extends EventDispatcher
 									  sequence or an earlier call was
 									  unsuccessful.
 	**/
-	public var name(default, null):String;
-
+	public var name(get, null):String;
+	
 	/**
 		The size of the file on the local disk in bytes. If `size` is 0, an
 		exception is thrown.
@@ -430,8 +430,8 @@ class FileReference extends EventDispatcher
 									  sequence or an earlier call was
 									  unsuccessful.
 	**/
-	public var size(default, null):Int;
-
+	public var size(get, null):Int;
+	
 	/**
 		The file type.
 		In Windows or Linux, this property is the file extension. On the
@@ -440,9 +440,9 @@ class FileReference extends EventDispatcher
 		object was not populated, a call to get the value of this property
 		returns `null`.
 
-		For Windows, Linux, and Mac OS X, the file extension נthe portion
+		For Windows, Linux, and Mac OS X, the file extension ?the portion
 		of the `name` property that follows the last occurrence of the dot (.)
-		character נidentifies the file type.
+		character ?identifies the file type.
 
 		@throws IllegalOperationError If the `FileReference.browse()`,
 									  `FileReferenceList.browse()`, or
@@ -454,8 +454,24 @@ class FileReference extends EventDispatcher
 									  unsuccessful. In this case, the value of
 									  the `type` property is `null`.
 	**/
-	public var type(default, null):String;
+	public var type(get, null):String;
 
+	/**
+		The filename extension.
+
+		A file's extension is the part of the name following (and not including)
+		the final dot ("."). If there is no dot in the filename, the extension
+		is `null`.
+
+		Note: You should use the `extension` property to determine a file's
+		type; do not use the `creator` or `type` properties. You should consider
+		the `creator` and `type` properties to be considered deprecated. They
+		apply to older versions of Mac OS.
+
+		@throws IllegalOperationError If the reference is not initialized
+	**/
+	public var extension(get, never):String;
+	
 	@:noCompletion private var __data:ByteArray;
 	@:noCompletion private var __path:String;
 	@:noCompletion private var __urlLoader:URLLoader;
@@ -659,8 +675,8 @@ class FileReference extends EventDispatcher
 		3.0 Developer's Guide_.
 
 		**Note**: If your server requires user authentication, only SWF files
-		running in a browser נthat is, using the browser plug-in or ActiveX
-		control נcan provide a dialog box to prompt the user for a user
+		running in a browser ?that is, using the browser plug-in or ActiveX
+		control ?can provide a dialog box to prompt the user for a user
 		name and password for authentication, and only for downloads. For
 		uploads using the plug-in or ActiveX control, or for uploads and
 		downloads using the stand-alone or external player, the file transfer
@@ -1029,7 +1045,7 @@ class FileReference extends EventDispatcher
 		if (data == null) return;
 
 		#if desktop
-		if (Std.is(data, ByteArrayData))
+		if ((data is ByteArrayData))
 		{
 			__data = data;
 		}
@@ -1044,7 +1060,7 @@ class FileReference extends EventDispatcher
 		saveFileDialog.onSelect.add(saveFileDialog_onSelect);
 		saveFileDialog.browse(SAVE, defaultFileName != null ? Path.extension(defaultFileName) : null, defaultFileName);
 		#elseif (js && html5)
-		if (Std.is(data, ByteArrayData))
+		if ((data is ByteArrayData))
 		{
 			__data = data;
 		}
@@ -1119,8 +1135,8 @@ class FileReference extends EventDispatcher
 		`POST` operations.
 
 		**Note**: If your server requires user authentication, only SWF files
-		running in a browser נthat is, using the browser plug-in or ActiveX
-		control נcan provide a dialog box to prompt the user for a username
+		running in a browser ?that is, using the browser plug-in or ActiveX
+		control ?can provide a dialog box to prompt the user for a username
 		and password for authentication, and only for downloads. For uploads
 		using the plug-in or ActiveX control, or for uploads and downloads
 		using the stand-alone or external player, the file transfer fails.
@@ -1283,7 +1299,7 @@ class FileReference extends EventDispatcher
 	**/
 	public function upload(request:URLRequest, uploadDataFieldName:String = "Filedata", testUpload:Bool = false):Void
 	{
-		openfl._internal.Lib.notImplemented();
+		openfl.utils._internal.Lib.notImplemented();
 	}
 	#end
 
@@ -1351,7 +1367,7 @@ class FileReference extends EventDispatcher
 	@:noCompletion private function urlLoader_onComplete(event:Event):Void
 	{
 		#if desktop
-		if (Std.is(__urlLoader.data, ByteArrayData))
+		if ((__urlLoader.data is ByteArrayData))
 		{
 			__data = __urlLoader.data;
 		}
@@ -1381,6 +1397,37 @@ class FileReference extends EventDispatcher
 	@:noCompletion private function urlLoader_onProgress(event:ProgressEvent):Void
 	{
 		dispatchEvent(event);
+	}
+	
+	@:noCompletion private function get_creationDate():Date{
+		return creationDate;
+	}
+	
+	@:noCompletion private function get_modificationDate():Date{
+		return modificationDate;
+	}
+	
+	@:noCompletion private function get_name():String{
+		return name;
+	}
+	
+	@:noCompletion private function get_size():Int
+	{
+		return size;
+	}
+	
+	@:noCompletion private function get_type():String
+	{
+		return type;
+	}
+
+	@:noCompletion private function get_extension():String
+	{
+		if (name == null || name.indexOf(".") == -1)
+		{
+			return null;
+		}
+		return Path.extension(name);
 	}
 }
 #else

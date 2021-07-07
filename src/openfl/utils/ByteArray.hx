@@ -66,6 +66,7 @@ import format.amf3.Writer as AMF3Writer;
 #if !openfl_doc_gen
 @:forward(endian, objectEncoding)
 #end
+@:transitive
 abstract ByteArray(ByteArrayData) from ByteArrayData to ByteArrayData
 {
 	/**
@@ -313,7 +314,7 @@ abstract ByteArray(ByteArrayData) from ByteArrayData to ByteArrayData
 		#if display
 		return null;
 		#else
-		if (Std.is(bytes, ByteArrayData))
+		if ((bytes is ByteArrayData))
 		{
 			return cast bytes;
 		}
@@ -747,7 +748,13 @@ abstract ByteArray(ByteArrayData) from ByteArrayData to ByteArrayData
 	#if lime
 	@:to @:noCompletion private static function toLimeBytes(byteArray:ByteArray):LimeBytes
 	{
-		return fromBytes(byteArray);
+		#if display
+		return null;
+		#elseif flash
+		return Bytes.ofData(byteArray);
+		#else
+		return (byteArray : ByteArrayData);
+		#end
 	}
 	#end
 
@@ -1084,15 +1091,15 @@ abstract ByteArray(ByteArrayData) from ByteArrayData to ByteArrayData
 		});
 		untyped global.Object.defineProperties(ByteArrayData.prototype, {
 			"bytesAvailable": {
-				get: untyped __js__("function () { return this.get_bytesAvailable (); }")
+				get: untyped #if haxe4 js.Syntax.code #else __js__ #end ("function () { return this.get_bytesAvailable (); }")
 			},
 			"endian": {
-				get: untyped __js__("function () { return this.get_endian (); }"),
-				set: untyped __js__("function (v) { return this.set_endian (v); }")
+				get: untyped #if haxe4 js.Syntax.code #else __js__ #end ("function () { return this.get_endian (); }"),
+				set: untyped #if haxe4 js.Syntax.code #else __js__ #end ("function (v) { return this.set_endian (v); }")
 			},
 			"length": {
-				get: untyped __js__("function () { return this.get_length (); }"),
-				set: untyped __js__("function (v) { return this.set_length (v); }")
+				get: untyped #if haxe4 js.Syntax.code #else __js__ #end ("function () { return this.get_length (); }"),
+				set: untyped #if haxe4 js.Syntax.code #else __js__ #end ("function (v) { return this.set_length (v); }")
 			},
 		});
 	}
@@ -1254,7 +1261,7 @@ abstract ByteArray(ByteArrayData) from ByteArrayData to ByteArrayData
 			(bytes : ByteArrayData).__resize(offset + length);
 		}
 
-			(bytes : ByteArrayData).blit(offset, this, position, length);
+		(bytes : ByteArrayData).blit(offset, this, position, length);
 		position += length;
 	}
 
