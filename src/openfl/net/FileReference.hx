@@ -11,7 +11,7 @@ import openfl.events.ProgressEvent;
 import openfl.events.SecurityErrorEvent;
 import openfl.utils.ByteArray;
 import openfl.net.URLLoaderDataFormat;
-import openfl._internal.utils.UploadPostHelper;
+import openfl.utils._internal.UploadPostHelper;
 #if lime
 import lime.ui.FileDialog;
 import lime.utils.Bytes;

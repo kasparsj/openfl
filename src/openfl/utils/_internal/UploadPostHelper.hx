@@ -1,4 +1,4 @@
-package openfl._internal.utils;
+package openfl.utils._internal;
 
 import openfl.utils.ByteArray;
 import openfl.utils.Endian;
